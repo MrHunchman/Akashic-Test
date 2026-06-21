@@ -1,4 +1,4 @@
-import { MAL_STATUS_LABELS } from "./config.js";
+import { MAL_STATUS_LABELS, STATUS_MAP } from "./config.js";
 
 export function unique(values) {
   return [...new Set(values.filter(Boolean))];
@@ -15,25 +15,27 @@ export function normalizeText(value = "") {
 }
 
 export function normalizeStatusToMalCode(status) {
-  if (status === null || status === undefined) return 0;
+  if (status === null || status === undefined || status === "") return 6;
 
   const raw = String(status).trim();
-  const numeric = Number(raw);
-  if (Number.isFinite(numeric) && MAL_STATUS_LABELS[numeric]) return numeric;
+  const num = Number(raw);
 
-  const s = raw.toLowerCase();
+  if (Number.isFinite(num) && [1, 2, 3, 4, 6].includes(num)) {
+    return num;
+  }
 
-  if (["current", "currently_watching", "watching", "reading", "repeating"].includes(s)) return 1;
-  if (["completed", "complete", "finished"].includes(s)) return 2;
-  if (["paused", "on_hold", "hold", "hiatus"].includes(s)) return 3;
-  if (["dropped", "drop"].includes(s)) return 4;
-  if (["planning", "plan_to_watch", "plan_to_read", "planned", "plan"].includes(s)) return 6;
+  const upper = raw.toUpperCase();
+  const lower = raw.toLowerCase();
 
-  return 0;
+  if (STATUS_MAP[raw] !== undefined) return STATUS_MAP[raw];
+  if (STATUS_MAP[upper] !== undefined) return STATUS_MAP[upper];
+  if (STATUS_MAP[lower] !== undefined) return STATUS_MAP[lower];
+
+  return 6;
 }
 
 export function getStatusLabel(code) {
-  return MAL_STATUS_LABELS[Number(code)] || "Unknown";
+  return MAL_STATUS_LABELS[Number(code)] || "Plan to Watch";
 }
 
 export function applyScoreRule(score, rule) {
@@ -102,7 +104,19 @@ export function sleep(ms) {
 
 export function buildTitleCandidates(item) {
   return unique([
-    item.title,
-    ...(item.titleCandidates || []),
+    item?.title,
+    ...(item?.titleCandidates || [])
   ]);
+}
+
+export function sharedTokenCount(a, b) {
+  const setA = new Set(String(a).split(/\s+/).filter(Boolean));
+  const setB = new Set(String(b).split(/\s+/).filter(Boolean));
+  let count = 0;
+
+  for (const token of setA) {
+    if (setB.has(token)) count += 1;
+  }
+
+  return count;
 }

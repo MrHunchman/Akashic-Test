@@ -15,8 +15,14 @@ const els = {
   logSection: document.getElementById("logSection"),
   statsBox: document.getElementById("statsBox"),
   phantomBox: document.getElementById("phantomBox"),
-  phantomList: document.getElementById("phantomList")
+  phantomList: document.getElementById("phantomList"),
+  matchProgressBox: document.getElementById("matchProgressBox"),
+  matchProgressText: document.getElementById("matchProgressText"),
+  matchTimerText: document.getElementById("matchTimerText")
 };
+
+let timerInterval = null;
+let startedAt = 0;
 
 els.exportBtn.addEventListener("click", runTranslator);
 
@@ -35,6 +41,7 @@ async function runTranslator() {
 
   setLoading(true);
   clearLog();
+  startProgressTimer();
 
   try {
     let rawData = [];
@@ -50,12 +57,36 @@ async function runTranslator() {
       malStatus: normalizeStatusToMalCode(item.status)
     }));
 
-    const resolved = await resolveMissingMalIds(
-      standardized,
-      mediaType,
-      fallbackSearch,
-      () => {}
-    );
+    let resolved = standardized;
+
+    if (fallbackSearch) {
+      const needsFallback = standardized.some((item) => !item.idMal);
+
+      if (needsFallback) {
+        els.matchProgressBox.classList.remove("hidden");
+        els.matchProgressText.textContent = "Resolving missing MAL IDs in small batches...";
+
+        resolved = await resolveMissingMalIds(
+          standardized,
+          mediaType,
+          true,
+          ({ phase, done, total, matched, unmatched }) => {
+            if (phase === "start") {
+              els.matchProgressText.textContent = `Found ${total} missing entries. Starting batch lookups...`;
+            } else if (phase === "batch") {
+              els.matchProgressText.textContent =
+                `Resolving missing MAL IDs... ${done}/${total} processed, ${matched} matched, ${unmatched} still unmatched.`;
+            } else if (phase === "done") {
+              els.matchProgressText.textContent =
+                `Finished resolving IDs. ${matched} matched, ${unmatched} still unmatched.`;
+            }
+          }
+        );
+      } else {
+        els.matchProgressBox.classList.remove("hidden");
+        els.matchProgressText.textContent = "No missing MAL IDs found. Skipping fallback lookup.";
+      }
+    }
 
     const translated = resolved.map((item) => ({
       ...item,
@@ -113,7 +144,9 @@ async function runTranslator() {
     console.error(error);
     alert(`Error: ${error.message}`);
   } finally {
+    stopProgressTimer();
     setLoading(false);
+    els.matchProgressBox.classList.add("hidden");
   }
 }
 
@@ -136,6 +169,26 @@ function clearLog() {
   els.statsBox.innerHTML = "";
   els.phantomBox.classList.add("hidden");
   els.phantomList.innerHTML = "";
+}
+
+function startProgressTimer() {
+  stopProgressTimer();
+  startedAt = Date.now();
+  els.matchTimerText.textContent = "Elapsed: 0s";
+
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    els.matchTimerText.textContent = `Elapsed: ${mins}m ${secs}s`;
+  }, 1000);
+}
+
+function stopProgressTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
 }
 
 function renderStats({ total, exported, matched, unmatched, exportFormat }) {

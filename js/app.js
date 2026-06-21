@@ -1,7 +1,12 @@
-import { EXPORT_EXTENSIONS } from "./config.js";
-import { fetchAniList, fetchMAL, fetchKitsu, resolveMissingMalIds } from "./api.js";
+import {
+  EXPORT_BASE_LABELS,
+  EXPORT_EXTENSIONS,
+  TARGET_RECOMMENDATIONS,
+  TARGET_RECOMMENDATION_TEXT
+} from "./config.js";
+import { fetchSource, resolveMissingMalIds } from "./api/index.js";
 import { applyScoreRule, normalizeStatusToMalCode, downloadBlob } from "./utils.js";
-import { buildXML, buildCSV, buildJSON, buildTXT, buildDOCX } from "./exporters.js";
+import { buildXML, buildCSV, buildJSON, buildTXT, buildDOCX } from "./exporters/index.js";
 
 const landingScreen = document.getElementById("landingScreen");
 const translatorScreen = document.getElementById("translatorScreen");
@@ -13,6 +18,36 @@ const futureModalBackdrop = document.getElementById("futureModalBackdrop");
 const futureModalClose = document.getElementById("futureModalClose");
 const futureModalTitle = document.getElementById("futureModalTitle");
 const futureModalText = document.getElementById("futureModalText");
+
+const jikanModal = document.getElementById("jikanModal");
+const jikanModalBackdrop = document.getElementById("jikanModalBackdrop");
+const jikanProgressText = document.getElementById("jikanProgressText");
+const jikanCurrentText = document.getElementById("jikanCurrentText");
+const jikanTimerText = document.getElementById("jikanTimerText");
+
+const els = {
+  sourcePlatform: document.getElementById("sourcePlatform"),
+  targetPlatform: document.getElementById("targetPlatform"),
+  username: document.getElementById("username"),
+  mediaType: document.getElementById("mediaType"),
+  exportFormat: document.getElementById("exportFormat"),
+  scoreRule: document.getElementById("scoreRule"),
+  fallbackSearch: document.getElementById("fallbackSearch"),
+  exportBtn: document.getElementById("exportBtn"),
+  loadingState: document.getElementById("loadingState"),
+  logSection: document.getElementById("logSection"),
+  statsBox: document.getElementById("statsBox"),
+  phantomBox: document.getElementById("phantomBox"),
+  phantomList: document.getElementById("phantomList"),
+  matchProgressBox: document.getElementById("matchProgressBox"),
+  matchProgressText: document.getElementById("matchProgressText"),
+  matchCurrentText: document.getElementById("matchCurrentText"),
+  matchTimerText: document.getElementById("matchTimerText"),
+  targetRecommendationText: document.getElementById("targetRecommendationText")
+};
+
+let timerInterval = null;
+let startedAt = 0;
 
 document.querySelectorAll(".future-card").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -35,9 +70,19 @@ backHomeBtn?.addEventListener("click", () => {
 futureModalBackdrop?.addEventListener("click", closeFutureModal);
 futureModalClose?.addEventListener("click", closeFutureModal);
 
+jikanModalBackdrop?.addEventListener("click", closeJikanModal);
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeFutureModal();
+  if (e.key === "Escape") {
+    closeFutureModal();
+    closeJikanModal();
+  }
 });
+
+els.exportBtn.addEventListener("click", runTranslator);
+els.targetPlatform.addEventListener("change", updateRecommendedFormatLabels);
+
+updateRecommendedFormatLabels();
 
 function openFutureModal(title, text) {
   futureModalTitle.textContent = title || "Coming soon";
@@ -51,31 +96,34 @@ function closeFutureModal() {
   futureModal.classList.remove("flex");
 }
 
-const els = {
-  sourcePlatform: document.getElementById("sourcePlatform"),
-  username: document.getElementById("username"),
-  mediaType: document.getElementById("mediaType"),
-  exportFormat: document.getElementById("exportFormat"),
-  scoreRule: document.getElementById("scoreRule"),
-  fallbackSearch: document.getElementById("fallbackSearch"),
-  exportBtn: document.getElementById("exportBtn"),
-  loadingState: document.getElementById("loadingState"),
-  logSection: document.getElementById("logSection"),
-  statsBox: document.getElementById("statsBox"),
-  phantomBox: document.getElementById("phantomBox"),
-  phantomList: document.getElementById("phantomList"),
-  matchProgressBox: document.getElementById("matchProgressBox"),
-  matchProgressText: document.getElementById("matchProgressText"),
-  matchTimerText: document.getElementById("matchTimerText")
-};
+function openJikanModal() {
+  jikanModal.classList.remove("hidden");
+  jikanModal.classList.add("flex");
+}
 
-let timerInterval = null;
-let startedAt = 0;
+function closeJikanModal() {
+  jikanModal.classList.add("hidden");
+  jikanModal.classList.remove("flex");
+}
 
-els.exportBtn.addEventListener("click", runTranslator);
+function updateRecommendedFormatLabels() {
+  const target = els.targetPlatform.value;
+  const recommended = TARGET_RECOMMENDATIONS[target] || "JSON";
+  const recommendationText = TARGET_RECOMMENDATION_TEXT[target] || "Recommended export updated.";
+
+  els.targetRecommendationText.textContent = recommendationText;
+
+  for (const option of els.exportFormat.options) {
+    const base = EXPORT_BASE_LABELS[option.value] || option.value;
+    option.textContent = option.value === recommended
+      ? `${base} (recommended)`
+      : base;
+  }
+}
 
 async function runTranslator() {
   const sourcePlatform = els.sourcePlatform.value;
+  const targetPlatform = els.targetPlatform.value;
   const username = els.username.value.trim();
   const mediaType = els.mediaType.value;
   const exportFormat = els.exportFormat.value;
@@ -92,11 +140,7 @@ async function runTranslator() {
   startProgressTimer();
 
   try {
-    let rawData = [];
-
-    if (sourcePlatform === "ANILIST") rawData = await fetchAniList(username, mediaType);
-    if (sourcePlatform === "MAL") rawData = await fetchMAL(username, mediaType);
-    if (sourcePlatform === "KITSU") rawData = await fetchKitsu(username, mediaType);
+    const rawData = await fetchSource(sourcePlatform, username, mediaType);
 
     const standardized = rawData.map((item) => ({
       ...item,
@@ -107,30 +151,46 @@ async function runTranslator() {
 
     let resolved = standardized;
 
-    if (fallbackSearch) {
-      const needsFallback = standardized.some((item) => !item.idMal);
+    const unresolvedCount = standardized.filter((item) => !item.idMal).length;
 
-      if (needsFallback) {
-        els.matchProgressBox.classList.remove("hidden");
-        els.matchProgressText.textContent = "Resolving missing MAL IDs in small batches...";
+    if (fallbackSearch && unresolvedCount > 0) {
+      openJikanModal();
+      els.matchProgressBox.classList.remove("hidden");
 
-        resolved = await resolveMissingMalIds(
-          standardized,
-          mediaType,
-          true,
-          ({ phase, done, total, matched, unmatched }) => {
-            if (phase === "start") {
-              els.matchProgressText.textContent = `Found ${total} missing entries. Starting fallback lookups...`;
-            } else if (phase === "batch") {
-              els.matchProgressText.textContent =
-                `Resolving missing MAL IDs... ${done}/${total} processed, ${matched} matched, ${unmatched} still unmatched.`;
-            } else if (phase === "done") {
-              els.matchProgressText.textContent =
-                `Finished resolving IDs. ${matched} matched, ${unmatched} still unmatched.`;
-            }
+      resolved = await resolveMissingMalIds(standardized, mediaType, {
+        enabled: true,
+        onProgress: ({ phase, done, total, matched, unmatched }) => {
+          if (phase === "start") {
+            const msg = `Found ${total} missing entries. Starting fallback lookups...`;
+            els.matchProgressText.textContent = msg;
+            jikanProgressText.textContent = msg;
+          } else if (phase === "batch") {
+            const msg = `Resolving missing MAL IDs... ${done}/${total} processed, ${matched} matched, ${unmatched} still unmatched.`;
+            els.matchProgressText.textContent = msg;
+            jikanProgressText.textContent = msg;
+          } else if (phase === "done") {
+            const msg = `Finished resolving IDs. ${matched} matched, ${unmatched} still unmatched.`;
+            els.matchProgressText.textContent = msg;
+            jikanProgressText.textContent = msg;
           }
-        );
-      }
+        },
+        onCurrent: ({ title, done, total, matched, unmatched }) => {
+          const current = title && title !== "-" ? title : "-";
+          const msg = `Current: ${current}`;
+          els.matchCurrentText.textContent = msg;
+          jikanCurrentText.textContent = msg;
+
+          const timerElapsed = Math.floor((Date.now() - startedAt) / 1000);
+          const mins = Math.floor(timerElapsed / 60);
+          const secs = timerElapsed % 60;
+          const timerMsg = `Elapsed: ${mins}m ${secs}s`;
+          els.matchTimerText.textContent = timerMsg;
+          jikanTimerText.textContent = timerMsg;
+        }
+      });
+    } else {
+      closeJikanModal();
+      els.matchProgressBox.classList.add("hidden");
     }
 
     const translated = resolved.map((item) => ({
@@ -144,7 +204,7 @@ async function runTranslator() {
       : translated;
 
     const phantoms = translated.filter((item) => !item.idMal);
-    const filename = buildFilename(username, sourcePlatform, exportFormat, mediaType);
+    const filename = buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType);
 
     let blob;
 
@@ -159,6 +219,7 @@ async function runTranslator() {
         blob = buildJSON(translated, {
           username,
           sourcePlatform,
+          targetPlatform,
           mediaType,
           exportFormat
         });
@@ -180,7 +241,9 @@ async function runTranslator() {
       exported: exportable.length,
       matched: translated.length - phantoms.length,
       unmatched: phantoms.length,
-      exportFormat
+      exportFormat,
+      sourcePlatform,
+      targetPlatform
     });
 
     renderPhantoms(phantoms);
@@ -192,6 +255,7 @@ async function runTranslator() {
     stopProgressTimer();
     setLoading(false);
     els.matchProgressBox.classList.add("hidden");
+    closeJikanModal();
   }
 }
 
@@ -216,19 +280,26 @@ function clearLog() {
   els.phantomList.innerHTML = "";
   els.matchProgressBox.classList.add("hidden");
   els.matchProgressText.textContent = "Starting...";
+  els.matchCurrentText.textContent = "Current: -";
   els.matchTimerText.textContent = "Elapsed: 0s";
+  jikanProgressText.textContent = "Preparing...";
+  jikanCurrentText.textContent = "Current: -";
+  jikanTimerText.textContent = "Elapsed: 0s";
 }
 
 function startProgressTimer() {
   stopProgressTimer();
   startedAt = Date.now();
   els.matchTimerText.textContent = "Elapsed: 0s";
+  jikanTimerText.textContent = "Elapsed: 0s";
 
   timerInterval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - startedAt) / 1000);
     const mins = Math.floor(elapsed / 60);
     const secs = elapsed % 60;
-    els.matchTimerText.textContent = `Elapsed: ${mins}m ${secs}s`;
+    const text = `Elapsed: ${mins}m ${secs}s`;
+    els.matchTimerText.textContent = text;
+    jikanTimerText.textContent = text;
   }, 1000);
 }
 
@@ -239,11 +310,13 @@ function stopProgressTimer() {
   }
 }
 
-function renderStats({ total, exported, matched, unmatched, exportFormat }) {
+function renderStats({ total, exported, matched, unmatched, exportFormat, sourcePlatform, targetPlatform }) {
   els.statsBox.innerHTML = `
     <div>Total entries: <strong>${total}</strong></div>
     <div>Matched MAL IDs: <strong>${matched}</strong></div>
     <div>Unmatched: <strong>${unmatched}</strong></div>
+    <div>Source: <strong>${sourcePlatform}</strong></div>
+    <div>Target: <strong>${targetPlatform}</strong></div>
     <div>Export format: <strong>${exportFormat}</strong></div>
     ${exportFormat === "XML" ? `<div>XML exported entries: <strong>${exported}</strong></div>` : ""}
   `;
@@ -262,7 +335,7 @@ function renderPhantoms(phantoms) {
   }
 }
 
-function buildFilename(username, sourcePlatform, exportFormat, mediaType) {
+function buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType) {
   const ext = EXPORT_EXTENSIONS[exportFormat] || exportFormat.toLowerCase();
-  return `${username}_${sourcePlatform.toLowerCase()}_${mediaType.toLowerCase()}.${ext}`;
+  return `${username}_${sourcePlatform.toLowerCase()}_to_${targetPlatform.toLowerCase()}_${mediaType.toLowerCase()}.${ext}`;
 }

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Akashic</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+
+<body class="p-6 md:p-12">
+  <div class="max-w-4xl mx-auto space-y-8">
+    <div class="text-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-3">Akashic</h1>
+      <p class="text-gray-400">
+        Fetch, translate, match, and export anime or manga lists without the usual database nonsense.
+      </p>
+    </div>
+
+    <section class="glass step-card rounded-2xl p-6 md:p-8 shadow-2xl">
+      <h2 class="text-2xl font-bold text-white mb-2">Step 1: Source</h2>
+      <p class="text-sm text-gray-400 mb-6">
+        Pick the platform where your list currently lives.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Platform</label>
+          <select id="sourcePlatform" class="input">
+            <option value="ANILIST">AniList</option>
+            <option value="MAL">MyAnimeList</option>
+            <option value="KITSU">Kitsu</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+          <input id="username" type="text" class="input" placeholder="Enter username" />
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-300 mb-2">Media Type</label>
+        <select id="mediaType" class="input">
+          <option value="ANIME">Anime</option>
+          <option value="MANGA">Manga</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="glass step-card rounded-2xl p-6 md:p-8 shadow-2xl">
+      <h2 class="text-2xl font-bold text-white mb-2">Step 2: Export</h2>
+      <p class="text-sm text-gray-400 mb-6">
+        Pick the format you want to generate.
+      </p>
+
+      <select id="exportFormat" class="input">
+        <option value="XML">MyAnimeList XML</option>
+        <option value="CSV">CSV</option>
+        <option value="JSON">JSON</option>
+        <option value="TXT">TXT</option>
+        <option value="DOCX">DOCX</option>
+      </select>
+    </section>
+
+    <section class="glass step-card rounded-2xl p-6 md:p-8 shadow-2xl">
+      <h2 class="text-2xl font-bold text-white mb-2">Step 3: Score Rules</h2>
+      <p class="text-sm text-gray-400 mb-6">
+        Translate scores to something importable.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+        <select id="scoreRule" class="input">
+          <option value="KEEP">Keep as-is</option>
+          <option value="NEAREST">Round to nearest</option>
+          <option value="UP">Round up</option>
+          <option value="DOWN">Round down</option>
+        </select>
+
+        <label class="flex items-center gap-3 text-sm text-gray-300">
+          <input id="fallbackSearch" type="checkbox" checked class="w-4 h-4" />
+          Resolve missing MAL IDs by title search
+        </label>
+      </div>
+    </section>
+
+    <section class="glass step-card rounded-2xl p-6 md:p-8 shadow-2xl text-center">
+      <h2 class="text-2xl font-bold text-white mb-2">Step 4: Export</h2>
+      <p class="text-sm text-gray-400 mb-6">
+        It will fetch, match, and build the file. Because apparently humans need databases to talk to other databases.
+      </p>
+
+      <button id="exportBtn" class="btn" type="button">
+        Start Translation & Download
+      </button>
+
+      <div id="loadingState" class="hidden justify-center items-center gap-3 text-blue-400 py-4 mt-3">
+        <div class="loader w-6 h-6 border-4 border-gray-700 rounded-full"></div>
+        <span class="font-medium">Fetching and translating...</span>
+      </div>
+    </section>
+
+    <section id="logSection" class="hidden glass rounded-2xl p-6 md:p-8 shadow-2xl">
+      <h3 class="text-xl font-bold text-white mb-4">Translation Log</h3>
+      <div id="statsBox" class="bg-green-900/30 border border-green-500/30 rounded-xl p-4 mb-4 text-green-300 font-medium"></div>
+
+      <div id="phantomBox" class="hidden bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm max-h-56 overflow-y-auto">
+        <p class="font-bold mb-2">Unmatched entries</p>
+        <ul id="phantomList" class="list-disc pl-5 space-y-1"></ul>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

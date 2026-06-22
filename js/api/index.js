@@ -19,4 +19,9 @@ export async function fetchSource(sourcePlatform, username, mediaType) {
   }
 }
 
-export { fetchAniList, fetchMAL, fetchKitsu, resolveMissingMalIds };
+export {
+  fetchAniList,
+  fetchMAL,
+  fetchKitsu,
+  resolveMissingMalIds
+};

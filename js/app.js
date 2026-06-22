@@ -33,6 +33,7 @@ const els = {
   exportFormat: document.getElementById("exportFormat"),
   scoreRule: document.getElementById("scoreRule"),
   fallbackSearch: document.getElementById("fallbackSearch"),
+  fallbackHint: document.getElementById("fallbackHint"),
   exportBtn: document.getElementById("exportBtn"),
   loadingState: document.getElementById("loadingState"),
   logSection: document.getElementById("logSection"),
@@ -43,8 +44,7 @@ const els = {
   matchProgressText: document.getElementById("matchProgressText"),
   matchCurrentText: document.getElementById("matchCurrentText"),
   matchTimerText: document.getElementById("matchTimerText"),
-  targetRecommendationText: document.getElementById("targetRecommendationText"),
-  fallbackHint: document.getElementById("fallbackHint")
+  targetRecommendationText: document.getElementById("targetRecommendationText")
 };
 
 let timerInterval = null;
@@ -129,14 +129,23 @@ function syncTargetRules() {
     }
   }
 
-  const fallbackAllowed = target === "MAL" && source !== target;
+  const fallbackAllowed = els.exportFormat.value === "XML" && source !== target;
   els.fallbackSearch.disabled = !fallbackAllowed;
-  if (!fallbackAllowed) els.fallbackSearch.checked = false;
+
+  if (!fallbackAllowed) {
+    els.fallbackSearch.checked = false;
+  }
 
   if (els.fallbackHint) {
-    els.fallbackHint.textContent = fallbackAllowed
-      ? "Only useful for MyAnimeList XML exports."
-      : "Not needed for this source and target combination.";
+    if (target === "KITSU") {
+      els.fallbackHint.textContent = "Kitsu only supports XML export here.";
+    } else if (source === target) {
+      els.fallbackHint.textContent = "Not needed when source and target are the same.";
+    } else if (els.exportFormat.value === "XML") {
+      els.fallbackHint.textContent = "Useful for XML exports when MAL IDs are missing.";
+    } else {
+      els.fallbackHint.textContent = "Fallback lookup only matters for XML exports.";
+    }
   }
 
   els.matchProgressBox.classList.add("hidden");
@@ -175,7 +184,6 @@ async function runTranslator() {
     }));
 
     const needsMalResolution =
-      targetPlatform === "MAL" &&
       exportFormat === "XML" &&
       sourcePlatform !== targetPlatform &&
       fallbackSearch &&
@@ -230,12 +238,11 @@ async function runTranslator() {
     }));
 
     const exportable = exportFormat === "XML"
-      ? translated.filter((item) => item.idMal || targetPlatform !== "MAL")
+      ? translated.filter((item) => item.idMal)
       : translated;
 
-    const showUnmatched = targetPlatform === "MAL" && exportFormat === "XML" && sourcePlatform !== targetPlatform;
+    const showUnmatched = exportFormat === "XML" && sourcePlatform !== targetPlatform && targetPlatform !== "KITSU";
     const phantoms = showUnmatched ? translated.filter((item) => !item.idMal) : [];
-
     const filename = buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType);
 
     let blob;
@@ -343,7 +350,16 @@ function stopProgressTimer() {
   }
 }
 
-function renderStats({ total, exported, matched, unmatched, exportFormat, sourcePlatform, targetPlatform, showUnmatched }) {
+function renderStats({
+  total,
+  exported,
+  matched,
+  unmatched,
+  exportFormat,
+  sourcePlatform,
+  targetPlatform,
+  showUnmatched
+}) {
   els.statsBox.innerHTML = `
     <div>Total entries: <strong>${total}</strong></div>
     <div>Matched IDs: <strong>${matched}</strong></div>
@@ -371,4 +387,4 @@ function renderPhantoms(phantoms, showUnmatched) {
 function buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType) {
   const ext = EXPORT_EXTENSIONS[exportFormat] || exportFormat.toLowerCase();
   return `${username}_${sourcePlatform.toLowerCase()}_to_${targetPlatform.toLowerCase()}_${mediaType.toLowerCase()}.${ext}`;
-}
+        }

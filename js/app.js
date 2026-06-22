@@ -1,5 +1,10 @@
-import { EXPORT_EXTENSIONS } from "./config.js";
-import { fetchAniList, fetchMAL, fetchKitsu, resolveMissingMalIds } from "./api/index.js";
+import {
+  EXPORT_BASE_LABELS,
+  EXPORT_EXTENSIONS,
+  TARGET_RECOMMENDATIONS,
+  TARGET_RECOMMENDATION_TEXT
+} from "./config.js";
+import { fetchSource, resolveMissingMalIds } from "./api/index.js";
 import { applyScoreRule, normalizeStatusToMalCode, downloadBlob } from "./utils.js";
 import { buildXML, buildCSV, buildJSON, buildTXT, buildDOCX } from "./exporters/index.js";
 

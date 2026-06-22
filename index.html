@@ -41,10 +41,11 @@
           </p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 max-w-4xl mx-auto text-sm text-violet-100/90">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto text-sm text-violet-100/90">
           <div class="feature-pill">AniList, MAL, Kitsu</div>
           <div class="feature-pill">XML, CSV, JSON, DOCX</div>
-          <div class="feature-pill">Fast matching engine</div>
+          <div class="feature-pill">Profile cards</div>
+          <div class="feature-pill">Fast local tools</div>
         </div>
 
         <section class="grid gap-5 md:gap-6 mt-8 md:mt-14">
@@ -66,20 +67,18 @@
             <span class="chevron">›</span>
           </button>
 
-          <button class="landing-card group future-card" type="button"
-            data-title="Profile Generation"
-            data-text="Generate beautiful structured anime profiles and statistics from your data. This feature will be added in a future update.">
+          <button id="openProfile" class="landing-card group" type="button">
             <div class="icon-box">
               <svg viewBox="0 0 24 24" class="w-10 h-10 text-indigo-300" fill="none" stroke="currentColor" stroke-width="1.8">
                 <circle cx="12" cy="8" r="3.5"></circle>
-                <path d="M5 20a7 7 0 0 1 14 0" stroke-linecap="round"></path>
-                <path d="M17 5l1 1m2-1l-1 1m1 6l1 1m-3-1l1 1" stroke-linecap="round"></path>
+                <path d="M4.5 18.5a7.5 7.5 0 0 1 15 0" stroke-linecap="round"></path>
+                <path d="M18.5 5.5l1 1m1.5 3l-1 1m-15-5 1 1m-2 3 1 1" stroke-linecap="round"></path>
               </svg>
             </div>
             <div class="flex-1 text-left">
               <h2 class="text-2xl md:text-3xl font-medium text-slate-100">Profile Generation</h2>
               <p class="mt-2 text-sm md:text-base text-slate-400 leading-6">
-                Generate beautiful structured anime profiles and statistics from your data.
+                Turn public list data into a shareable profile card and download it as PNG.
               </p>
             </div>
             <span class="chevron">›</span>
@@ -240,6 +239,91 @@
         <p class="text-xs uppercase tracking-[0.3em] text-violet-300/80 mb-3">Coming later</p>
         <h3 id="futureModalTitle" class="text-2xl md:text-3xl font-semibold text-white"></h3>
         <p id="futureModalText" class="mt-4 text-sm md:text-base text-slate-300 leading-7"></p>
+      </div>
+    </div>
+
+    <div id="profileModal" class="fixed inset-0 hidden items-center justify-center z-50 px-4">
+      <div id="profileModalBackdrop" class="absolute inset-0 bg-black/75 backdrop-blur-sm"></div>
+      <div class="modal-shell profile-modal-shell relative w-full max-w-6xl rounded-[1.8rem] border border-white/10 bg-[#0b1020] p-6 md:p-8 shadow-2xl">
+        <button id="profileModalClose" class="absolute right-4 top-4 text-slate-400 hover:text-white text-2xl leading-none" type="button">&times;</button>
+
+        <div class="mb-6">
+          <p class="text-xs uppercase tracking-[0.3em] text-violet-300/80 mb-3">Profile generation</p>
+          <h3 class="text-2xl md:text-4xl font-semibold text-white">Create a shareable profile card</h3>
+          <p class="mt-3 text-sm md:text-base text-slate-400 max-w-3xl leading-7">
+            Pick a source account, fetch the public list in-browser, and turn it into a clean PNG card with stats and top entries.
+          </p>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <div class="space-y-4 profile-form-panel">
+            <div>
+              <label class="label">Source Platform</label>
+              <select id="profileSourcePlatform" class="input">
+                <option value="ANILIST">AniList</option>
+                <option value="MAL">MyAnimeList</option>
+                <option value="KITSU">Kitsu</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="label">Username</label>
+              <input type="text" id="profileUsername" class="input" placeholder="Enter username">
+            </div>
+
+            <div>
+              <label class="label">Media Type</label>
+              <select id="profileMediaType" class="input">
+                <option value="ANIME">Anime</option>
+                <option value="MANGA">Manga</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <button id="profileGenerateBtn" class="btn-primary" type="button">Generate Profile Card</button>
+              <button id="profileDownloadBtn" class="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-4 text-sm font-semibold text-slate-100 transition lift-on-hover disabled:opacity-50 disabled:cursor-not-allowed" type="button" disabled>
+                Download PNG
+              </button>
+            </div>
+
+            <p id="profileStatusText" class="text-sm text-slate-400 leading-6">
+              Ready to generate a profile card.
+            </p>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2">
+              <div class="profile-mini-stat">
+                <span id="profileTotalText" class="profile-mini-value">0</span>
+                <span class="profile-mini-label">Entries</span>
+              </div>
+              <div class="profile-mini-stat">
+                <span id="profileAverageText" class="profile-mini-value">0.0</span>
+                <span class="profile-mini-label">Avg score</span>
+              </div>
+              <div class="profile-mini-stat">
+                <span id="profileHighestText" class="profile-mini-value">0.0</span>
+                <span class="profile-mini-label">Highest</span>
+              </div>
+              <div class="profile-mini-stat">
+                <span id="profileProgressText" class="profile-mini-value">0</span>
+                <span id="profileProgressLabel" class="profile-mini-label">Episodes</span>
+              </div>
+              <div class="profile-mini-stat">
+                <span id="profileCompletedText" class="profile-mini-value">0</span>
+                <span class="profile-mini-label">Completed</span>
+              </div>
+            </div>
+
+            <p class="text-xs text-slate-500 leading-6">
+              Everything is rendered locally in your browser.
+            </p>
+          </div>
+
+          <div class="profile-preview-panel">
+            <div class="profile-preview-wrap">
+              <canvas id="profileCanvas" width="1400" height="900" class="profile-canvas"></canvas>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

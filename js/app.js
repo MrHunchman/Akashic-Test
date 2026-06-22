@@ -1,10 +1,5 @@
-import {
-  EXPORT_BASE_LABELS,
-  EXPORT_EXTENSIONS,
-  TARGET_RECOMMENDATIONS,
-  TARGET_RECOMMENDATION_TEXT
-} from "./config.js";
-import { fetchSource, resolveMissingMalIds } from "./api/index.js";
+import { EXPORT_EXTENSIONS } from "./config.js";
+import { fetchAniList, fetchMAL, fetchKitsu, resolveMissingMalIds } from "./api/index.js";
 import { applyScoreRule, normalizeStatusToMalCode, downloadBlob } from "./utils.js";
 import { buildXML, buildCSV, buildJSON, buildTXT, buildDOCX } from "./exporters/index.js";
 
@@ -49,6 +44,7 @@ const els = {
 
 let timerInterval = null;
 let startedAt = 0;
+let currentView = "home";
 
 document.querySelectorAll(".future-card").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -57,20 +53,25 @@ document.querySelectorAll(".future-card").forEach((btn) => {
 });
 
 openTranslator?.addEventListener("click", () => {
-  landingScreen.classList.add("hidden");
-  translatorScreen.classList.remove("hidden");
-  translatorScreen.scrollIntoView({ behavior: "smooth", block: "start" });
+  showView("translator", { pushHistory: true });
 });
 
 backHomeBtn?.addEventListener("click", () => {
-  translatorScreen.classList.add("hidden");
-  landingScreen.classList.remove("hidden");
-  landingScreen.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (history.state?.view === "translator") {
+    history.back();
+  } else {
+    showView("home", { pushHistory: false });
+  }
 });
 
 futureModalBackdrop?.addEventListener("click", closeFutureModal);
 futureModalClose?.addEventListener("click", closeFutureModal);
 jikanModalBackdrop?.addEventListener("click", closeJikanModal);
+
+window.addEventListener("popstate", (event) => {
+  const view = event.state?.view || "home";
+  showView(view, { pushHistory: false });
+});
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
@@ -84,7 +85,39 @@ els.targetPlatform.addEventListener("change", syncTargetRules);
 els.sourcePlatform.addEventListener("change", syncTargetRules);
 els.exportFormat.addEventListener("change", syncTargetRules);
 
+if (!history.state) {
+  history.replaceState({ view: "home" }, "", location.href);
+}
 syncTargetRules();
+showView("home", { pushHistory: false });
+
+function showView(view, { pushHistory = false } = {}) {
+  currentView = view;
+
+  if (view === "translator") {
+    landingScreen.classList.add("hidden");
+    translatorScreen.classList.remove("hidden");
+    translatorScreen.classList.remove("section-fade");
+    void translatorScreen.offsetWidth;
+    translatorScreen.classList.add("section-fade");
+    translatorScreen.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.title = "Akashic | Translator";
+  } else {
+    translatorScreen.classList.add("hidden");
+    landingScreen.classList.remove("hidden");
+    landingScreen.classList.remove("section-fade");
+    void landingScreen.offsetWidth;
+    landingScreen.classList.add("section-fade");
+    landingScreen.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.title = "Akashic";
+  }
+
+  if (pushHistory) {
+    history.pushState({ view }, "", location.href);
+  } else if (!history.state || history.state.view !== view) {
+    history.replaceState({ view }, "", location.href);
+  }
+}
 
 function openFutureModal(title, text) {
   futureModalTitle.textContent = title || "Coming soon";
@@ -108,18 +141,25 @@ function closeJikanModal() {
   jikanModal.classList.remove("flex");
 }
 
+function getRecommendedFormat(source, target) {
+  if (target === "MAL") return "XML";
+  if (target === "KITSU") return "XML";
+  if (source === "ANILIST" && target === "ANILIST") return "JSON";
+  return "JSON";
+}
+
 function syncTargetRules() {
   const source = els.sourcePlatform.value;
   const target = els.targetPlatform.value;
 
-  const recommended = TARGET_RECOMMENDATIONS[target] || "JSON";
-  const recommendationText = TARGET_RECOMMENDATION_TEXT[target] || "Recommended export updated.";
-  els.targetRecommendationText.textContent = recommendationText;
+  const recommended = getRecommendedFormat(source, target);
 
   for (const option of els.exportFormat.options) {
-    const base = EXPORT_BASE_LABELS[option.value] || option.value;
-    option.textContent = option.value === recommended ? `${base} (recommended)` : base;
+    const base = option.value;
     option.disabled = false;
+    option.textContent = option.value === recommended
+      ? `${base} (recommended)`
+      : base;
   }
 
   if (target === "KITSU") {
@@ -131,10 +171,7 @@ function syncTargetRules() {
 
   const fallbackAllowed = els.exportFormat.value === "XML" && source !== target;
   els.fallbackSearch.disabled = !fallbackAllowed;
-
-  if (!fallbackAllowed) {
-    els.fallbackSearch.checked = false;
-  }
+  if (!fallbackAllowed) els.fallbackSearch.checked = false;
 
   if (els.fallbackHint) {
     if (target === "KITSU") {
@@ -145,6 +182,16 @@ function syncTargetRules() {
       els.fallbackHint.textContent = "Useful for XML exports when MAL IDs are missing.";
     } else {
       els.fallbackHint.textContent = "Fallback lookup only matters for XML exports.";
+    }
+  }
+
+  if (els.targetRecommendationText) {
+    if (target === "MAL") {
+      els.targetRecommendationText.textContent = "MyAnimeList works best with XML exports.";
+    } else if (target === "ANILIST") {
+      els.targetRecommendationText.textContent = "AniList works best with JSON exports.";
+    } else if (target === "KITSU") {
+      els.targetRecommendationText.textContent = "Kitsu in this version uses XML export only.";
     }
   }
 
@@ -165,10 +212,6 @@ async function runTranslator() {
     return;
   }
 
-  if (targetPlatform === "KITSU" && exportFormat !== "XML") {
-    els.exportFormat.value = "XML";
-  }
-
   setLoading(true);
   clearLog();
   startProgressTimer();
@@ -183,15 +226,17 @@ async function runTranslator() {
       malStatus: normalizeStatusToMalCode(item.status)
     }));
 
-    const needsMalResolution =
+    let resolved = standardized;
+
+    const unresolvedCount = standardized.filter((item) => !item.idMal).length;
+    const needsFallback =
       exportFormat === "XML" &&
       sourcePlatform !== targetPlatform &&
       fallbackSearch &&
-      standardized.some((item) => !item.idMal);
+      unresolvedCount > 0 &&
+      targetPlatform !== "KITSU";
 
-    let resolved = standardized;
-
-    if (needsMalResolution) {
+    if (needsFallback) {
       openJikanModal();
       els.matchProgressBox.classList.remove("hidden");
 
@@ -241,7 +286,11 @@ async function runTranslator() {
       ? translated.filter((item) => item.idMal)
       : translated;
 
-    const showUnmatched = exportFormat === "XML" && sourcePlatform !== targetPlatform && targetPlatform !== "KITSU";
+    const showUnmatched =
+      exportFormat === "XML" &&
+      sourcePlatform !== targetPlatform &&
+      targetPlatform !== "KITSU";
+
     const phantoms = showUnmatched ? translated.filter((item) => !item.idMal) : [];
     const filename = buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType);
 
@@ -387,4 +436,4 @@ function renderPhantoms(phantoms, showUnmatched) {
 function buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType) {
   const ext = EXPORT_EXTENSIONS[exportFormat] || exportFormat.toLowerCase();
   return `${username}_${sourcePlatform.toLowerCase()}_to_${targetPlatform.toLowerCase()}_${mediaType.toLowerCase()}.${ext}`;
-        }
+}

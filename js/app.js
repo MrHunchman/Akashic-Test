@@ -1,6 +1,6 @@
-import { EXPORT_BASE_LABELS, EXPORT_EXTENSIONS, TARGET_RECOMMENDATIONS, TARGET_RECOMMENDATION_TEXT } from "./config.js";
+import { EXPORT_BASE_LABELS, EXPORT_EXTENSIONS } from "./config.js";
 import { fetchSource, resolveMissingMalIds } from "./api/index.js";
-import { openProfileModal, closeProfileModal } from "./profile.js";
+import { initProfileModule, openProfileModal, closeProfileModal, syncProfileDefaults } from "./profile.js";
 import { applyScoreRule, normalizeStatusToMalCode, downloadBlob } from "./utils.js";
 import { buildXML, buildCSV, buildJSON, buildTXT, buildDOCX } from "./exporters/index.js";
 
@@ -51,6 +51,8 @@ let timerInterval = null;
 let startedAt = 0;
 let currentView = "home";
 
+initProfileModule();
+
 document.querySelectorAll(".future-card").forEach((btn) => {
   btn.addEventListener("click", () => {
     openFutureModal(btn.dataset.title, btn.dataset.text);
@@ -71,8 +73,8 @@ backHomeBtn?.addEventListener("click", () => {
 });
 
 openProfileBtn?.addEventListener("click", () => {
-  openProfileModal();
   history.pushState({ view: currentView, modal: "profile" }, "", "#profile");
+  openProfileModal();
 });
 
 futureModalBackdrop?.addEventListener("click", closeFutureModal);
@@ -92,7 +94,7 @@ window.addEventListener("popstate", (event) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    closeProfileModal();
+    closeProfileModal({ fromHistory: false, skipHistory: true });
     closeFutureModal();
     closeJikanModal();
   }
@@ -170,7 +172,6 @@ function syncTargetRules() {
   const source = els.sourcePlatform.value;
   const target = els.targetPlatform.value;
   const recommended = getRecommendedFormat(source, target);
-  const recommendationText = TARGET_RECOMMENDATION_TEXT[target] || "Recommended export updated.";
 
   for (const option of els.exportFormat.options) {
     const base = EXPORT_BASE_LABELS[option.value] || option.value;
@@ -190,7 +191,15 @@ function syncTargetRules() {
   if (!fallbackAllowed) els.fallbackSearch.checked = false;
 
   if (exportFormatHint) {
-    exportFormatHint.textContent = recommendationText;
+    if (target === "MAL") {
+      exportFormatHint.textContent = "MyAnimeList works best with XML exports.";
+    } else if (target === "ANILIST") {
+      exportFormatHint.textContent = "AniList works best with JSON exports.";
+    } else if (target === "KITSU") {
+      exportFormatHint.textContent = "Kitsu in this version uses XML export only.";
+    } else {
+      exportFormatHint.textContent = "Recommended export updated.";
+    }
   }
 
   if (fallbackHint) {
@@ -455,4 +464,4 @@ function renderPhantoms(phantoms, showUnmatched) {
 function buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType) {
   const ext = EXPORT_EXTENSIONS[exportFormat] || exportFormat.toLowerCase();
   return `${username}_${sourcePlatform.toLowerCase()}_to_${targetPlatform.toLowerCase()}_${mediaType.toLowerCase()}.${ext}`;
-}
+      }

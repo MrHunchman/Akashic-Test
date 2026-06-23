@@ -10,337 +10,141 @@
 </head>
 
 <body class="min-h-screen bg-[#121212] text-white">
-  <div class="min-h-screen">
+  <main class="relative min-h-screen">
+    <section class="mx-auto max-w-6xl px-4 py-10 md:py-14">
+      <div class="mx-auto mb-10 max-w-3xl">
+  <div class="rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-4 text-left shadow-lg">
+    <p class="text-[11px] uppercase tracking-[0.3em] text-zinc-500 mb-2">Announcement</p>
 
-    <main class="relative z-10 max-w-6xl mx-auto px-4 py-8 md:py-12">
-      <section id="landingScreen" class="text-center space-y-8 md:space-y-10 section-fade">
-        <div class="pt-8 md:pt-14">
-          <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs md:text-sm text-violet-100/80 backdrop-blur badge-glow">
-            <span class="h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_12px_rgba(168,85,247,0.9)]"></span>
-            Universal anime data toolkit
-          </div>
+    <h2 class="text-lg md:text-xl font-semibold text-white">
+      Update 1.0 - First Beta Release
+    </h2>
 
-          <h1 class="mt-6 text-5xl md:text-7xl font-semibold tracking-tight text-white">
-            Akashic
-          </h1>
-
-          <p class="mt-6 text-lg md:text-xl text-violet-100/90">
-            Extract. Generate. Remember.
-          </p>
-
-          <p class="mt-4 max-w-2xl mx-auto text-sm md:text-base text-slate-300 leading-7">
-            Akashic brings anime and manga data together, builds clean profiles, and exports everything in structured formats.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto text-sm text-violet-100/90">
-          <div class="feature-pill">AniList, MAL, Kitsu</div>
-          <div class="feature-pill">XML, CSV, JSON, DOCX</div>
-          <div class="feature-pill">Profile cards</div>
-          <div class="feature-pill">Fast local tools</div>
-        </div>
-
-        <section class="grid gap-5 md:gap-6 mt-8 md:mt-14">
-          <button id="openTranslator" class="landing-card group" type="button">
-            <div class="icon-box">
-              <svg viewBox="0 0 24 24" class="w-10 h-10 text-violet-300" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M12 3v13" stroke-linecap="round"></path>
-                <path d="M8 12l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"></path>
-                <path d="M5 19h14" stroke-linecap="round"></path>
-                <path d="M6 8a4 4 0 0 1 4-4h4a4 4 0 1 1 0 8H9" stroke-linecap="round" stroke-linejoin="round"></path>
-              </svg>
-            </div>
-            <div class="flex-1 text-left">
-              <h2 class="text-2xl md:text-3xl font-medium text-slate-100">MAL / AL / Kitsu scraper</h2>
-              <p class="mt-2 text-sm md:text-base text-slate-400 leading-6">
-                Scrape anime, manga, and list data from MyAnimeList, AniList, and Kitsu with ease.
-              </p>
-            </div>
-            <span class="chevron">›</span>
-          </button>
-
-          <button id="openProfile" class="landing-card group" type="button">
-            <div class="icon-box">
-              <svg viewBox="0 0 24 24" class="w-10 h-10 text-indigo-300" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="12" cy="8" r="3.5"></circle>
-                <path d="M4.5 18.5a7.5 7.5 0 0 1 15 0" stroke-linecap="round"></path>
-                <path d="M18.5 5.5l1 1m1.5 3l-1 1m-15-5 1 1m-2 3 1 1" stroke-linecap="round"></path>
-              </svg>
-            </div>
-            <div class="flex-1 text-left">
-              <h2 class="text-2xl md:text-3xl font-medium text-slate-100">Profile Generation</h2>
-              <p class="mt-2 text-sm md:text-base text-slate-400 leading-6">
-                Turn public list data into a shareable profile card and download it as PNG.
-              </p>
-            </div>
-            <span class="chevron">›</span>
-          </button>
-
-          <button class="landing-card group future-card" type="button"
-            data-title="Custom Website Scraper"
-            data-text="Scrape data from any website with custom selectors and flexible rules. This feature will be added in a future update.">
-            <div class="icon-box">
-              <svg viewBox="0 0 24 24" class="w-10 h-10 text-violet-300" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="12" cy="12" r="8"></circle>
-                <path d="M4 12h16" stroke-linecap="round"></path>
-                <path d="M12 4c2.5 2.5 2.5 13.5 0 16" stroke-linecap="round"></path>
-                <path d="M12 4c-2.5 2.5-2.5 13.5 0 16" stroke-linecap="round"></path>
-              </svg>
-            </div>
-            <div class="flex-1 text-left">
-              <h2 class="text-2xl md:text-3xl font-medium text-slate-100">Custom Website Scraper</h2>
-              <p class="mt-2 text-sm md:text-base text-slate-400 leading-6">
-                Scrape data from any website with custom selectors and flexible rules.
-              </p>
-            </div>
-            <span class="chevron">›</span>
-          </button>
-        </section>
-
-        <p class="pt-8 md:pt-12 text-sm text-violet-100/70">
-          Your data. Your universe.
-        </p>
-      </section>
-
-      <section id="translatorScreen" class="hidden mt-10 md:mt-14 section-fade">
-        <div class="glass rounded-[2rem] p-5 md:p-8 shadow-[0_18px_80px_rgba(0,0,0,0.45)] border border-white/10 panel-shell">
-          <div class="flex items-start justify-between gap-4 mb-7">
-            <div>
-              <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-violet-100/80 backdrop-blur mb-3 badge-glow">
-                Translation engine
-              </div>
-              <h2 class="text-3xl md:text-4xl font-semibold text-white">List Translator</h2>
-              <p class="text-sm md:text-base text-slate-400 mt-2 max-w-2xl">
-                Fetch from AniList, MyAnimeList, or Kitsu, then export into MAL XML, CSV, JSON, TXT, or DOCX.
-              </p>
-            </div>
-
-            <button id="backHomeBtn" class="hidden md:inline-flex px-4 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-slate-200 transition lift-on-hover" type="button">
-              Back
-            </button>
-          </div>
-
-          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div>
-              <label class="label">Source Platform</label>
-              <select id="sourcePlatform" class="input">
-                <option value="ANILIST">AniList</option>
-                <option value="MAL">MyAnimeList</option>
-                <option value="KITSU">Kitsu</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="label">Target Platform</label>
-              <select id="targetPlatform" class="input">
-                <option value="MAL">MyAnimeList</option>
-                <option value="ANILIST">AniList</option>
-                <option value="KITSU">Kitsu</option>
-              </select>
-              <p id="targetRecommendationText" class="mt-2 text-xs text-slate-500"></p>
-            </div>
-
-            <div>
-              <label class="label">Username</label>
-              <input type="text" id="username" class="input" placeholder="Enter username">
-            </div>
-
-            <div>
-              <label class="label">Media Type</label>
-              <select id="mediaType" class="input">
-                <option value="ANIME">Anime</option>
-                <option value="MANGA">Manga</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="label">Export Format</label>
-              <select id="exportFormat" class="input">
-                <option value="XML">XML</option>
-                <option value="CSV">CSV</option>
-                <option value="JSON">JSON</option>
-                <option value="TXT">TXT</option>
-                <option value="DOCX">DOCX</option>
-              </select>
-              <p id="fallbackHint" class="mt-2 text-xs text-slate-500"></p>
-            </div>
-
-            <div>
-              <label class="label">Score Rule</label>
-              <select id="scoreRule" class="input">
-                <option value="KEEP">Keep as-is</option>
-                <option value="NEAREST">Round to nearest</option>
-                <option value="UP">Round up</option>
-                <option value="DOWN">Round down</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="label">Choose Mode</label>
-              <select id="modeSelect" class="input" disabled>
-                <option>Normal Mode (not implemented yet)</option>
-                <option>Deep Perfect Mode (not implemented yet)</option>
-              </select>
-              <p class="mt-2 text-xs text-slate-500">Mode selection will be added in a future update.</p>
-            </div>
-
-            <div class="flex items-end">
-              <div>
-                <label class="flex items-center gap-3 text-sm text-slate-300 select-none pb-3">
-                  <input id="fallbackSearch" type="checkbox" checked class="w-4 h-4 accent-violet-400">
-                  Resolve missing MAL IDs by title search
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-6">
-            <button id="exportBtn" class="btn-primary" type="button">Start Translation & Download</button>
-
-            <div id="loadingState" class="hidden justify-center items-center gap-3 text-violet-300 py-4 mt-3">
-              <div class="loader w-6 h-6 border-4 border-white/15 rounded-full"></div>
-              <span class="font-medium">Fetching and translating...</span>
-            </div>
-
-            <div id="matchProgressBox" class="hidden mt-4 rounded-2xl border border-violet-400/20 bg-violet-500/10 p-4 text-left text-sm text-violet-100">
-              <div class="font-semibold mb-1">Resolving missing MAL IDs</div>
-              <div id="matchProgressText">Starting...</div>
-              <div id="matchCurrentText" class="mt-1 text-violet-100/75">Current: -</div>
-              <div id="matchTimerText" class="mt-1 text-violet-100/75">Elapsed: 0s</div>
-            </div>
-          </div>
-        </div>
-
-        <section id="logSection" class="hidden glass rounded-[2rem] p-5 md:p-8 mt-6 shadow-[0_18px_80px_rgba(0,0,0,0.45)] border border-white/10 panel-shell">
-          <h3 class="text-xl font-semibold text-white mb-4">Translation Log</h3>
-          <div id="statsBox" class="bg-emerald-500/10 border border-emerald-400/20 rounded-2xl p-4 mb-4 text-emerald-200 font-medium"></div>
-
-          <div id="phantomBox" class="hidden bg-rose-500/10 border border-rose-400/20 rounded-2xl p-4 text-rose-200 text-sm max-h-64 overflow-y-auto">
-            <p class="font-bold mb-2">Unmatched entries</p>
-            <ul id="phantomList" class="list-disc pl-5 space-y-1"></ul>
-          </div>
-        </section>
-      </section>
-    </main>
-
-    <div id="futureModal" class="fixed inset-0 hidden items-center justify-center z-50 px-4">
-      <div id="futureModalBackdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-      <div class="modal-shell relative w-full max-w-lg rounded-[1.75rem] border border-white/10 bg-[#0b1020] p-6 md:p-8 shadow-2xl">
-        <button id="futureModalClose" class="absolute right-4 top-4 text-slate-400 hover:text-white text-2xl leading-none" type="button">&times;</button>
-        <p class="text-xs uppercase tracking-[0.3em] text-violet-300/80 mb-3">Coming later</p>
-        <h3 id="futureModalTitle" class="text-2xl md:text-3xl font-semibold text-white"></h3>
-        <p id="futureModalText" class="mt-4 text-sm md:text-base text-slate-300 leading-7"></p>
-      </div>
-    </div>
-
-    <div id="profileModal" class="fixed inset-0 hidden items-center justify-center z-50 px-4">
-      <div id="profileModalBackdrop" class="absolute inset-0 bg-black/75 backdrop-blur-sm"></div>
-      <div class="modal-shell profile-modal-shell relative w-full max-w-6xl rounded-[1.8rem] border border-white/10 bg-[#0b1020] p-6 md:p-8 shadow-2xl">
-        <button id="profileModalClose" class="absolute right-4 top-4 text-slate-400 hover:text-white text-2xl leading-none" type="button">&times;</button>
-
-        <div class="mb-6">
-          <p class="text-xs uppercase tracking-[0.3em] text-violet-300/80 mb-3">Profile generation</p>
-          <h3 class="text-2xl md:text-4xl font-semibold text-white">Create a shareable profile card</h3>
-          <p class="mt-3 text-sm md:text-base text-slate-400 max-w-3xl leading-7">
-            Pick a source account, fetch the public list in-browser, and turn it into a clean PNG card with stats and top entries.
-          </p>
-        </div>
-
-        <div class="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-          <div class="space-y-4 profile-form-panel">
-            <div>
-              <label class="label">Source Platform</label>
-              <select id="profileSourcePlatform" class="input">
-                <option value="ANILIST">AniList</option>
-                <option value="MAL">MyAnimeList</option>
-                <option value="KITSU">Kitsu</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="label">Username</label>
-              <input type="text" id="profileUsername" class="input" placeholder="Enter username">
-            </div>
-
-            <div>
-              <label class="label">Media Type</label>
-              <select id="profileMediaType" class="input">
-                <option value="ANIME">Anime</option>
-                <option value="MANGA">Manga</option>
-              </select>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <button id="profileGenerateBtn" class="btn-primary" type="button">Generate Profile Card</button>
-              <button id="profileDownloadBtn" class="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-4 text-sm font-semibold text-slate-100 transition lift-on-hover disabled:opacity-50 disabled:cursor-not-allowed" type="button" disabled>
-                Download PNG
-              </button>
-            </div>
-
-            <p id="profileStatusText" class="text-sm text-slate-400 leading-6">
-              Ready to generate a profile card.
-            </p>
-
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2">
-              <div class="profile-mini-stat">
-                <span id="profileTotalText" class="profile-mini-value">0</span>
-                <span class="profile-mini-label">Entries</span>
-              </div>
-              <div class="profile-mini-stat">
-                <span id="profileAverageText" class="profile-mini-value">0.0</span>
-                <span class="profile-mini-label">Avg score</span>
-              </div>
-              <div class="profile-mini-stat">
-                <span id="profileHighestText" class="profile-mini-value">0.0</span>
-                <span class="profile-mini-label">Highest</span>
-              </div>
-              <div class="profile-mini-stat">
-                <span id="profileProgressText" class="profile-mini-value">0</span>
-                <span id="profileProgressLabel" class="profile-mini-label">Episodes</span>
-              </div>
-              <div class="profile-mini-stat">
-                <span id="profileCompletedText" class="profile-mini-value">0</span>
-                <span class="profile-mini-label">Completed</span>
-              </div>
-            </div>
-
-            <p class="text-xs text-slate-500 leading-6">
-              Everything is rendered locally in your browser.
-            </p>
-          </div>
-
-          <div class="profile-preview-panel">
-            <div class="profile-preview-wrap">
-              <canvas id="profileCanvas" width="1400" height="900" class="profile-canvas"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="jikanModal" class="fixed inset-0 hidden items-center justify-center z-50 px-4">
-      <div id="jikanModalBackdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-      <div class="modal-shell relative w-full max-w-xl rounded-[1.75rem] border border-violet-400/15 bg-[#0b1020] p-6 md:p-8 shadow-2xl">
-        <p class="text-xs uppercase tracking-[0.3em] text-violet-300/80 mb-3">Fallback lookup</p>
-        <h3 class="text-2xl md:text-3xl font-semibold text-white">Resolving missing entries</h3>
-        <p class="mt-4 text-sm md:text-base text-slate-300 leading-7">
-          This uses Jikan as a backup search layer. It is intentionally slow so the API does not throw a fit and pretend it was your fault.
-        </p>
-
-        <div class="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div id="jikanProgressText" class="text-sm text-violet-100">Preparing...</div>
-          <div id="jikanCurrentText" class="mt-2 text-sm text-violet-100/75">Current: -</div>
-          <div id="jikanTimerText" class="mt-2 text-sm text-violet-100/75">Elapsed: 0s</div>
-        </div>
-
-        <div class="mt-6 flex items-center gap-3 text-sm text-violet-100/70">
-          <div class="loader w-5 h-5 border-4 border-white/15 rounded-full"></div>
-          Please keep this tab open while fallback matching runs.
-        </div>
-      </div>
+    <div class="mt-2 text-sm md:text-base text-zinc-400 leading-7">
+      <ul class="list-disc list-inside space-y-1">
+        <li>New profile generation page is live. Scraper and profile tools now open as separate pages.</li>
+        <li>We now have a profile generator based on your data from AL, MAL, and Kitsu.</li>
+        <li>Updated more settings, separating them into their own pages with specific conditions.</li>
+      </ul>
     </div>
   </div>
+</div>
 
-  <script type="module" src="./js/app.js?v=6"></script>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto text-sm text-zinc-300">
+        <div class="feature-pill">AniList, MAL, Kitsu</div>
+        <div class="feature-pill">XML, CSV, JSON, DOCX</div>
+        <div class="feature-pill">Profile cards</div>
+        <div class="feature-pill">Fast local tools</div>
+      </div>
+
+      <section class="mt-8 md:mt-14 grid gap-5 md:gap-6">
+        <a href="./scraper.html" class="landing-card group" aria-label="Open scraper page">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" class="w-10 h-10 text-zinc-300" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 3v13" stroke-linecap="round"></path>
+              <path d="M8 12l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="M5 19h14" stroke-linecap="round"></path>
+              <path d="M6 8a4 4 0 0 1 4-4h4a4 4 0 1 1 0 8H9" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </div>
+          <div class="flex-1 text-left">
+            <h2 class="text-2xl md:text-3xl font-medium text-white">MAL / AL / Kitsu scraper</h2>
+            <p class="mt-2 text-sm md:text-base text-zinc-400 leading-6">
+              Scrape anime, manga, and list data from MyAnimeList, AniList, and Kitsu with ease.
+            </p>
+          </div>
+          <span class="chevron">›</span>
+        </a>
+
+        <a href="./profile.html" class="landing-card group" aria-label="Open profile generation page">
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" class="w-10 h-10 text-zinc-300" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="8" r="3.5"></circle>
+              <path d="M4.5 18.5a7.5 7.5 0 0 1 15 0" stroke-linecap="round"></path>
+              <path d="M18.5 5.5l1 1m1.5 3l-1 1m-15-5 1 1m-2 3 1 1" stroke-linecap="round"></path>
+            </svg>
+          </div>
+          <div class="flex-1 text-left">
+            <h2 class="text-2xl md:text-3xl font-medium text-white">Profile Generation</h2>
+            <p class="mt-2 text-sm md:text-base text-zinc-400 leading-6">
+              Turn public list data into a shareable profile card and download it as PNG.
+            </p>
+          </div>
+          <span class="chevron">›</span>
+        </a>
+
+        <button
+          class="landing-card group future-card"
+          type="button"
+          data-title="Custom Website Scraper"
+          data-text="Scrape data from any website with custom selectors and flexible rules. This feature will be added in a future update."
+        >
+          <div class="icon-box">
+            <svg viewBox="0 0 24 24" class="w-10 h-10 text-zinc-300" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="8"></circle>
+              <path d="M4 12h16" stroke-linecap="round"></path>
+              <path d="M12 4c2.5 2.5 2.5 13.5 0 16" stroke-linecap="round"></path>
+              <path d="M12 4c-2.5 2.5-2.5 13.5 0 16" stroke-linecap="round"></path>
+            </svg>
+          </div>
+          <div class="flex-1 text-left">
+            <h2 class="text-2xl md:text-3xl font-medium text-white">Custom Website Scraper</h2>
+            <p class="mt-2 text-sm md:text-base text-zinc-400 leading-6">
+              Scrape data from any website with custom selectors and flexible rules.
+            </p>
+          </div>
+          <span class="chevron">›</span>
+        </button>
+      </section>
+
+<section class="mt-12 max-w-5xl mx-auto">
+  <div class="rounded-2xl border border-zinc-800 bg-zinc-900/90 p-5 md:p-6">
+    <div class="mb-5">
+      <p class="text-[11px] uppercase tracking-[0.3em] text-zinc-500">Comments</p>
+      <h2 class="mt-2 text-xl md:text-2xl font-semibold text-white">Community Comments</h2>
+      <p class="mt-2 text-sm md:text-base text-zinc-400 leading-7">
+        Read updates, leave feedback, and talk about Akashic here.
+      </p>
+    </div>
+
+    <div class="giscus"></div>
+  </div>
+</section>
+
+<script src="https://giscus.app/client.js"
+  data-repo="Ombryal/Akashic"
+  data-repo-id="R_kgDOTAvBDw"
+  data-category="General"
+  data-category-id="DIC_kwDOTAvBD84C_u6v"
+  data-mapping="pathname"
+  data-strict="0"
+  data-reactions-enabled="1"
+  data-emit-metadata="0"
+  data-input-position="bottom"
+  data-theme="preferred_color_scheme"
+  data-lang="en"
+  data-loading="lazy"
+  crossorigin="anonymous"
+  async>
+</script>
+      
+      <p class="pt-8 md:pt-12 text-sm text-zinc-500 text-center">
+        Your data. Your universe.
+      </p>
+    </section>
+
+    <div id="futureModal" class="fixed inset-0 hidden items-center justify-center z-50 px-4">
+      <div id="futureModalBackdrop" class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+      <div class="modal-shell relative w-full max-w-lg rounded-2xl border border-zinc-700 bg-[#161616] p-6 md:p-8 shadow-2xl">
+        <button id="futureModalClose" class="absolute right-4 top-4 text-zinc-400 hover:text-white text-2xl leading-none" type="button">&times;</button>
+        <p class="text-xs uppercase tracking-[0.3em] text-zinc-500 mb-3">Coming later</p>
+        <h3 id="futureModalTitle" class="text-2xl md:text-3xl font-semibold text-white"></h3>
+        <p id="futureModalText" class="mt-4 text-sm md:text-base text-zinc-300 leading-7"></p>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./js/app.js"></script>
 </body>
 </html>

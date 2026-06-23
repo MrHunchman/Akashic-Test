@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Akashic | Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+
+<body class="min-h-screen bg-[#121212] text-white">
+  <main class="mx-auto max-w-6xl px-4 py-8 md:py-10">
+    <header class="mb-8 flex items-start justify-between gap-4">
+      <div>
+        <a href="./index.html" class="text-sm text-zinc-400 hover:text-white transition">← Home</a>
+        <h1 class="mt-3 text-3xl md:text-4xl font-semibold text-white">Profile Generation</h1>
+        <p class="mt-2 max-w-2xl text-sm md:text-base text-zinc-400 leading-7">
+          Turn public list data into a shareable profile card and preview or download it as PNG.
+        </p>
+      </div>
+    </header>
+
+    <section class="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <div class="space-y-4">
+        <div class="glass rounded-xl p-5 border border-zinc-800">
+          <div class="space-y-4">
+            <div>
+              <label class="label">Source Platform</label>
+              <select id="profileSourcePlatform" class="input">
+                <option value="ANILIST">AniList</option>
+                <option value="MAL">MyAnimeList</option>
+                <option value="KITSU">Kitsu</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="label">Username</label>
+              <input type="text" id="profileUsername" class="input" placeholder="Enter username">
+            </div>
+
+            <div>
+              <label class="label">Media Type</label>
+              <select id="profileMediaType" class="input">
+                <option value="ANIME">Anime</option>
+                <option value="MANGA">Manga</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <button id="profileGenerateBtn" class="btn-primary" type="button">Generate</button>
+              <button id="profilePreviewBtn" class="rounded-2xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 py-4 text-sm font-semibold text-white transition" type="button">Preview</button>
+              <button id="profileDownloadBtn" class="rounded-2xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 py-4 text-sm font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed" type="button" disabled>Download</button>
+            </div>
+
+            <p id="profileStatusText" class="text-sm text-zinc-400 leading-6">
+              Ready to generate a profile card.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-3 pt-5">
+            <div class="profile-mini-stat">
+              <span id="profileTotalText" class="profile-mini-value">0</span>
+              <span class="profile-mini-label">Entries</span>
+            </div>
+            <div class="profile-mini-stat">
+              <span id="profileAverageText" class="profile-mini-value">0.0</span>
+              <span class="profile-mini-label">Avg score</span>
+            </div>
+            <div class="profile-mini-stat">
+              <span id="profileHighestText" class="profile-mini-value">0.0</span>
+              <span class="profile-mini-label">Highest</span>
+            </div>
+            <div class="profile-mini-stat">
+              <span id="profileProgressText" class="profile-mini-value">0</span>
+              <span id="profileProgressLabel" class="profile-mini-label">Episodes</span>
+            </div>
+            <div class="profile-mini-stat">
+              <span id="profileCompletedText" class="profile-mini-value">0</span>
+              <span class="profile-mini-label">Completed</span>
+            </div>
+          </div>
+
+          <p class="mt-4 text-xs text-zinc-500 leading-6">
+            Everything is rendered locally in your browser.
+          </p>
+        </div>
+      </div>
+
+      <div class="profile-preview-panel">
+        <div class="profile-preview-wrap">
+          <canvas id="profileCanvas" width="1400" height="900" class="profile-canvas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <div id="profilePreviewModal" class="fixed inset-0 hidden items-center justify-center z-50 px-4">
+      <div data-preview-backdrop class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+      <div class="modal-shell relative w-full max-w-5xl rounded-2xl border border-zinc-700 bg-[#161616] shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between gap-3 px-5 md:px-7 py-4 border-b border-zinc-800">
+          <div>
+            <p class="text-xs uppercase tracking-[0.28em] text-zinc-500 mb-1">Preview</p>
+            <h2 class="text-xl md:text-2xl font-semibold text-white">Generated profile</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="profilePreviewDownload" type="button" class="rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 py-2 text-sm text-white transition">Download</button>
+            <button id="profilePreviewClose" type="button" class="rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 px-4 py-2 text-sm text-white transition">Close</button>
+          </div>
+        </div>
+
+        <div class="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div class="p-5 md:p-7 bg-[#111111]">
+            <div class="rounded-[1.2rem] border border-zinc-800 bg-black/20 p-3 md:p-4">
+              <img id="profilePreviewImage" alt="Profile preview" class="w-full h-auto rounded-[1rem] block" />
+            </div>
+          </div>
+
+          <aside class="border-t lg:border-t-0 lg:border-l border-zinc-800 p-5 md:p-7 bg-white/[0.02]">
+            <p class="text-sm text-zinc-300 leading-7" id="profilePreviewMeta"></p>
+            <div class="mt-5 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-xs text-zinc-500 leading-6">
+              This preview is generated locally from the canvas therefore no backend data were stored or used.
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./js/profile.js"></script>
+</body>
+</html>

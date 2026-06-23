@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Akashic | Scraper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+
+<body class="min-h-screen bg-[#121212] text-white">
+  <main class="mx-auto max-w-6xl px-4 py-8 md:py-10">
+    <header class="mb-8 flex items-start justify-between gap-4">
+      <div>
+        <a href="./index.html" class="text-sm text-zinc-400 hover:text-white transition">← Home</a>
+        <h1 class="mt-3 text-3xl md:text-4xl font-semibold text-white">List Translator</h1>
+        <p class="mt-2 max-w-2xl text-sm md:text-base text-zinc-400 leading-7">
+          Fetch from AniList, MyAnimeList, or Kitsu, then export into MAL XML, CSV, JSON, TXT, or DOCX.
+        </p>
+      </div>
+    </header>
+
+    <section class="glass rounded-xl p-5 md:p-8 border border-zinc-800 panel-shell">
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div>
+          <label class="label">Source Platform</label>
+          <select id="sourcePlatform" class="input">
+            <option value="ANILIST">AniList</option>
+            <option value="MAL">MyAnimeList</option>
+            <option value="KITSU">Kitsu</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="label">Target Platform</label>
+          <select id="targetPlatform" class="input">
+            <option value="MAL">MyAnimeList</option>
+            <option value="ANILIST">AniList</option>
+            <option value="KITSU">Kitsu</option>
+          </select>
+          <p id="targetRecommendationText" class="mt-2 text-xs text-zinc-500"></p>
+        </div>
+
+        <div>
+          <label class="label">Username</label>
+          <input type="text" id="username" class="input" placeholder="Enter username">
+        </div>
+
+        <div>
+          <label class="label">Media Type</label>
+          <select id="mediaType" class="input">
+            <option value="ANIME">Anime</option>
+            <option value="MANGA">Manga</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="label">Export Format</label>
+          <select id="exportFormat" class="input">
+            <option value="XML">XML</option>
+            <option value="CSV">CSV</option>
+            <option value="JSON">JSON</option>
+            <option value="TXT">TXT</option>
+            <option value="DOCX">DOCX</option>
+          </select>
+          <p id="fallbackHint" class="mt-2 text-xs text-zinc-500"></p>
+        </div>
+
+        <div>
+          <label class="label">Score Rule</label>
+          <select id="scoreRule" class="input">
+            <option value="KEEP">Keep as-is</option>
+            <option value="NEAREST">Round to nearest</option>
+            <option value="UP">Round up</option>
+            <option value="DOWN">Round down</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="label">Choose Mode</label>
+          <select id="modeSelect" class="input" disabled>
+            <option>Normal Mode (not implemented yet)</option>
+            <option>Deep Perfect Mode (not implemented yet)</option>
+          </select>
+          <p class="mt-2 text-xs text-zinc-500">Mode selection will be added in a future update.</p>
+        </div>
+
+        <div class="flex items-end">
+          <div>
+            <label class="flex items-center gap-3 text-sm text-zinc-300 select-none pb-3">
+              <input id="fallbackSearch" type="checkbox" checked class="w-4 h-4 accent-zinc-400">
+              Resolve missing MAL IDs by title search
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <button id="exportBtn" class="btn-primary" type="button">Start Translation & Download</button>
+
+        <div id="loadingState" class="hidden justify-center items-center gap-3 text-zinc-300 py-4 mt-3">
+          <div class="loader w-6 h-6 border-4 border-white/15 rounded-full"></div>
+          <span class="font-medium">Fetching and translating...</span>
+        </div>
+
+        <div id="matchProgressBox" class="hidden mt-4 rounded-2xl border border-zinc-700 bg-zinc-900 p-4 text-left text-sm text-zinc-200">
+          <div class="font-semibold mb-1">Resolving missing MAL IDs</div>
+          <div id="matchProgressText">Starting...</div>
+          <div id="matchCurrentText" class="mt-1 text-zinc-400">Current: -</div>
+          <div id="matchTimerText" class="mt-1 text-zinc-400">Elapsed: 0s</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="logSection" class="hidden glass rounded-xl p-5 md:p-8 mt-6 border border-zinc-800 panel-shell">
+      <h2 class="text-xl font-semibold text-white mb-4">Translation Log</h2>
+      <div id="statsBox" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-4 text-zinc-200 font-medium"></div>
+
+      <div id="phantomBox" class="hidden bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-zinc-300 text-sm max-h-64 overflow-y-auto">
+        <p class="font-bold mb-2">Unmatched entries</p>
+        <ul id="phantomList" class="list-disc pl-5 space-y-1"></ul>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/scraper.js"></script>
+</body>
+</html>

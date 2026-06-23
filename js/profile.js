@@ -5,14 +5,11 @@ let initialized = false;
 let lastProfileBlob = null;
 let lastProfileFilename = "";
 
-const mainSourcePlatform = () => document.getElementById("sourcePlatform");
-const mainUsername = () => document.getElementById("username");
-const mainMediaType = () => document.getElementById("mediaType");
-
 const nodes = {
   profileModal: () => document.getElementById("profileModal"),
   profileModalBackdrop: () => document.getElementById("profileModalBackdrop"),
   profileModalClose: () => document.getElementById("profileModalClose"),
+
   profileSourcePlatform: () => document.getElementById("profileSourcePlatform"),
   profileUsername: () => document.getElementById("profileUsername"),
   profileMediaType: () => document.getElementById("profileMediaType"),
@@ -20,12 +17,17 @@ const nodes = {
   profileDownloadBtn: () => document.getElementById("profileDownloadBtn"),
   profileStatusText: () => document.getElementById("profileStatusText"),
   profileCanvas: () => document.getElementById("profileCanvas"),
+
   profileTotalText: () => document.getElementById("profileTotalText"),
   profileAverageText: () => document.getElementById("profileAverageText"),
   profileHighestText: () => document.getElementById("profileHighestText"),
   profileProgressText: () => document.getElementById("profileProgressText"),
   profileProgressLabel: () => document.getElementById("profileProgressLabel"),
-  profileCompletedText: () => document.getElementById("profileCompletedText")
+  profileCompletedText: () => document.getElementById("profileCompletedText"),
+
+  mainSourcePlatform: () => document.getElementById("sourcePlatform"),
+  mainUsername: () => document.getElementById("username"),
+  mainMediaType: () => document.getElementById("mediaType")
 };
 
 export function initProfileModule() {
@@ -55,16 +57,24 @@ export function initProfileModule() {
 }
 
 export function syncProfileDefaults() {
+  initProfileModule();
+
   const profileSourcePlatform = nodes.profileSourcePlatform();
   const profileUsername = nodes.profileUsername();
   const profileMediaType = nodes.profileMediaType();
 
-  const source = mainSourcePlatform()?.value;
-  const username = mainUsername()?.value.trim();
-  const mediaType = mainMediaType()?.value;
+  const source = nodes.mainSourcePlatform()?.value;
+  const username = nodes.mainUsername()?.value.trim();
+  const mediaType = nodes.mainMediaType()?.value;
 
-  if (profileSourcePlatform && source) profileSourcePlatform.value = source;
-  if (profileMediaType && mediaType) profileMediaType.value = mediaType;
+  if (profileSourcePlatform && source) {
+    profileSourcePlatform.value = source;
+  }
+
+  if (profileMediaType && mediaType) {
+    profileMediaType.value = mediaType;
+  }
+
   if (profileUsername && username && !profileUsername.value.trim()) {
     profileUsername.value = username;
   }
@@ -73,6 +83,8 @@ export function syncProfileDefaults() {
 }
 
 export function openProfileModal() {
+  initProfileModule();
+
   const modal = nodes.profileModal();
   if (!modal) return;
 
@@ -162,12 +174,39 @@ function getProfileStatusLabel(code, mediaType) {
   return labels[Number(code)] || (isAnime ? "Plan to Watch" : "Plan to Read");
 }
 
+function normalizeSummary(summary) {
+  const mediaType = summary?.mediaType || "ANIME";
+
+  return {
+    total: Number(summary?.total) || 0,
+    averageScore: Number(summary?.averageScore) || 0,
+    progressTotal: Number(summary?.progressTotal) || 0,
+    completedCount: Number(summary?.completedCount) || 0,
+    highestItem: summary?.highestItem || null,
+    topEntries: Array.isArray(summary?.topEntries) ? summary.topEntries : [],
+    statusCounts: {
+      1: Number(summary?.statusCounts?.[1]) || 0,
+      2: Number(summary?.statusCounts?.[2]) || 0,
+      3: Number(summary?.statusCounts?.[3]) || 0,
+      4: Number(summary?.statusCounts?.[4]) || 0,
+      6: Number(summary?.statusCounts?.[6]) || 0
+    },
+    username: summary?.username || "Profile Preview",
+    sourcePlatform: summary?.sourcePlatform || "ANILIST",
+    sourceLabel: summary?.sourceLabel || "AniList",
+    mediaType,
+    mediaLabel: summary?.mediaLabel || getMediaLabel(mediaType),
+    progressLabel: summary?.progressLabel || getProgressLabel(mediaType),
+    progressLabelShort: summary?.progressLabelShort || getProgressLabelShort(mediaType)
+  };
+}
+
 function buildProfileSummary(entries, sourcePlatform, mediaType, username) {
   const normalized = (entries || []).map((item) => {
-    const score = Number(item.score) || 0;
-    const progress = Number(item.progress) || 0;
-    const statusCode = normalizeStatusToMalCode(item.status);
-    const title = String(item.title || "Unknown").trim();
+    const score = Number(item?.score) || 0;
+    const progress = Number(item?.progress) || 0;
+    const statusCode = normalizeStatusToMalCode(item?.status);
+    const title = String(item?.title || "Unknown").trim();
 
     return {
       title,
@@ -254,6 +293,8 @@ function renderProfilePlaceholder() {
 }
 
 async function generateProfileCard() {
+  initProfileModule();
+
   const profileSourcePlatform = nodes.profileSourcePlatform();
   const profileUsername = nodes.profileUsername();
   const profileMediaType = nodes.profileMediaType();
@@ -289,7 +330,9 @@ async function generateProfileCard() {
     setProfileDownloadEnabled(true);
 
     if (summary.total > 0) {
-      setProfileStatus(`Top rated: ${summary.highestItem ? summary.highestItem.title : "Unknown"} · ${summary.total} entries ready.`);
+      setProfileStatus(
+        `Top rated: ${summary.highestItem ? summary.highestItem.title : "Unknown"} · ${summary.total} entries ready.`
+      );
     } else {
       setProfileStatus("No entries found for that account, but the card is still ready.");
     }
@@ -352,6 +395,8 @@ function canvasToBlob(canvas) {
 }
 
 function drawProfileCard(canvas, summary) {
+  const data = normalizeSummary(summary);
+  const hasData = data.total > 0;
   const W = 1400;
   const H = 900;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -367,8 +412,6 @@ function drawProfileCard(canvas, summary) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
-  const hasData = Boolean(summary && summary.total > 0);
-
   const bg = ctx.createLinearGradient(0, 0, W, H);
   bg.addColorStop(0, "#040816");
   bg.addColorStop(1, "#0b1020");
@@ -382,10 +425,10 @@ function drawProfileCard(canvas, summary) {
   drawRoundedRect(ctx, 30, 30, W - 60, H - 60, 42, "rgba(10, 15, 32, 0.90)", "rgba(255,255,255,0.10)");
 
   drawPill(ctx, 70, 68, 190, 38, "AKASHIC PROFILE", "#8b5cf6");
-  drawPill(ctx, W - 290, 68, 220, 38, hasData ? `${summary.total} entries` : "Preview ready", "#22c55e");
+  drawPill(ctx, W - 290, 68, 220, 38, hasData ? `${data.total} entries` : "Preview ready", "#22c55e");
 
   ctx.fillStyle = "#ffffff";
-  const name = hasData ? summary.username : "Profile Preview";
+  const name = hasData ? data.username : "Profile Preview";
   const nameSize = fitTextSize(ctx, name, 900, 58, 34, 800);
   ctx.font = `800 ${nameSize}px Inter, system-ui, sans-serif`;
   ctx.fillText(name, 70, 165);
@@ -393,14 +436,14 @@ function drawProfileCard(canvas, summary) {
   ctx.fillStyle = "rgba(226,232,240,0.88)";
   ctx.font = "500 22px Inter, system-ui, sans-serif";
   const subLine = hasData
-    ? `${summary.sourceLabel} • ${summary.mediaLabel}`
+    ? `${data.sourceLabel} • ${data.mediaLabel}`
     : "Generate a shareable profile card from any public account.";
   ctx.fillText(subLine, 70, 206);
 
   ctx.fillStyle = "rgba(196,181,253,0.92)";
   ctx.font = "600 18px Inter, system-ui, sans-serif";
   const topLine = hasData
-    ? `Top rated: ${summary.highestItem ? summary.highestItem.title : "Unknown"} · ${summary.highestItem ? summary.highestItem.score.toFixed(1) : "0.0"}`
+    ? `Top rated: ${data.highestItem ? data.highestItem.title : "Unknown"} · ${data.highestItem ? data.highestItem.score.toFixed(1) : "0.0"}`
     : "The card updates instantly after you generate it.";
   ctx.fillText(topLine, 70, 238);
 
@@ -423,10 +466,28 @@ function drawProfileCard(canvas, summary) {
   const gapX = 22;
   const gapY = 18;
 
-  drawStatTile(ctx, statLeft, statTop, statW, statH, "Entries", hasData ? String(summary.total) : "0", "#8b5cf6");
-  drawStatTile(ctx, statLeft + statW + gapX, statTop, statW, statH, "Avg Score", hasData ? summary.averageScore.toFixed(1) : "0.0", "#22c55e");
-  drawStatTile(ctx, statLeft, statTop + statH + gapY, statW, statH, "Highest", hasData && summary.highestItem ? `${summary.highestItem.score.toFixed(1)}` : "0.0", "#38bdf8");
-  drawStatTile(ctx, statLeft + statW + gapX, statTop + statH + gapY, statW, statH, summary.progressLabel, hasData ? String(summary.progressTotal) : "0", "#f59e0b");
+  drawStatTile(ctx, statLeft, statTop, statW, statH, "Entries", hasData ? String(data.total) : "0", "#8b5cf6");
+  drawStatTile(ctx, statLeft + statW + gapX, statTop, statW, statH, "Avg Score", hasData ? data.averageScore.toFixed(1) : "0.0", "#22c55e");
+  drawStatTile(
+    ctx,
+    statLeft,
+    statTop + statH + gapY,
+    statW,
+    statH,
+    "Highest",
+    hasData && data.highestItem ? `${data.highestItem.score.toFixed(1)}` : "0.0",
+    "#38bdf8"
+  );
+  drawStatTile(
+    ctx,
+    statLeft + statW + gapX,
+    statTop + statH + gapY,
+    statW,
+    statH,
+    data.progressLabel,
+    hasData ? String(data.progressTotal) : "0",
+    "#f59e0b"
+  );
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "700 24px Inter, system-ui, sans-serif";
@@ -436,13 +497,13 @@ function drawProfileCard(canvas, summary) {
   ctx.font = "500 14px Inter, system-ui, sans-serif";
   ctx.fillText("Highest rated items pulled from the account", 818, 346);
 
-  if (hasData && summary.topEntries.length) {
+  if (hasData && data.topEntries.length) {
     const rowX = 818;
     const rowW = 480;
     const rowH = 82;
     const rowYStart = 372;
-    summary.topEntries.forEach((entry, index) => {
-      drawEntryRow(ctx, rowX, rowYStart + index * 90, rowW, rowH, index + 1, entry, summary.mediaType);
+    data.topEntries.forEach((entry, index) => {
+      drawEntryRow(ctx, rowX, rowYStart + index * 90, rowW, rowH, index + 1, entry, data.mediaType);
     });
   } else {
     ctx.fillStyle = "rgba(226,232,240,0.82)";
@@ -463,11 +524,11 @@ function drawProfileCard(canvas, summary) {
 
   const statusBars = hasData
     ? [
-        { label: getProfileStatusLabel(1, summary.mediaType), count: summary.statusCounts[1], color: "#8b5cf6" },
-        { label: getProfileStatusLabel(2, summary.mediaType), count: summary.statusCounts[2], color: "#22c55e" },
-        { label: getProfileStatusLabel(3, summary.mediaType), count: summary.statusCounts[3], color: "#f59e0b" },
-        { label: getProfileStatusLabel(4, summary.mediaType), count: summary.statusCounts[4], color: "#fb7185" },
-        { label: getProfileStatusLabel(6, summary.mediaType), count: summary.statusCounts[6], color: "#38bdf8" }
+        { label: getProfileStatusLabel(1, data.mediaType), count: data.statusCounts[1], color: "#8b5cf6" },
+        { label: getProfileStatusLabel(2, data.mediaType), count: data.statusCounts[2], color: "#22c55e" },
+        { label: getProfileStatusLabel(3, data.mediaType), count: data.statusCounts[3], color: "#f59e0b" },
+        { label: getProfileStatusLabel(4, data.mediaType), count: data.statusCounts[4], color: "#fb7185" },
+        { label: getProfileStatusLabel(6, data.mediaType), count: data.statusCounts[6], color: "#38bdf8" }
       ]
     : [
         { label: getProfileStatusLabel(1, "ANIME"), count: 0, color: "#8b5cf6" },
@@ -483,7 +544,7 @@ function drawProfileCard(canvas, summary) {
 
   statusBars.forEach((item, index) => {
     const y = barStartY + index * 23;
-    drawStatusBar(ctx, 96, y, barX, barW, item.label, item.count, hasData ? summary.total : 0, item.color);
+    drawStatusBar(ctx, 96, y, barX, barW, item.label, item.count, hasData ? data.total : 0, item.color);
   });
 
   ctx.fillStyle = "rgba(148,163,184,0.8)";
@@ -637,4 +698,4 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
     }
     ctx.fillText(drawLine, x, y + i * lineHeight);
   }
-}
+  }

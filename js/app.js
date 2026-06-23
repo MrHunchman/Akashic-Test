@@ -1,6 +1,10 @@
-import { EXPORT_BASE_LABELS, EXPORT_EXTENSIONS } from "./config.js";
+import {
+  EXPORT_BASE_LABELS,
+  EXPORT_EXTENSIONS,
+  TARGET_RECOMMENDATION_TEXT
+} from "./config.js";
+
 import { fetchSource, resolveMissingMalIds } from "./api/index.js";
-import { initProfileModule, openProfileModal, closeProfileModal, syncProfileDefaults } from "./profile.js";
 import { applyScoreRule, normalizeStatusToMalCode, downloadBlob } from "./utils.js";
 import { buildXML, buildCSV, buildJSON, buildTXT, buildDOCX } from "./exporters/index.js";
 
@@ -50,8 +54,7 @@ const els = {
 let timerInterval = null;
 let startedAt = 0;
 let currentView = "home";
-
-initProfileModule();
+let profileModulePromise = null;
 
 document.querySelectorAll(".future-card").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -60,7 +63,6 @@ document.querySelectorAll(".future-card").forEach((btn) => {
 });
 
 openTranslator?.addEventListener("click", () => {
-  closeProfileModal({ fromHistory: false, skipHistory: true });
   showView("translator", { pushHistory: true });
 });
 
@@ -72,31 +74,51 @@ backHomeBtn?.addEventListener("click", () => {
   }
 });
 
-openProfileBtn?.addEventListener("click", () => {
-  history.pushState({ view: currentView, modal: "profile" }, "", "#profile");
-  openProfileModal();
+openProfileBtn?.addEventListener("click", async () => {
+  try {
+    const profile = await loadProfileModule();
+    profile.syncProfileDefaults?.();
+    profile.openProfileModal?.();
+    history.pushState({ view: currentView, modal: "profile" }, "", "#profile");
+  } catch (error) {
+    console.error(error);
+    alert(`Profile module failed to open: ${error.message}`);
+  }
 });
 
 futureModalBackdrop?.addEventListener("click", closeFutureModal);
 futureModalClose?.addEventListener("click", closeFutureModal);
 jikanModalBackdrop?.addEventListener("click", closeJikanModal);
 
-window.addEventListener("popstate", (event) => {
+window.addEventListener("popstate", async (event) => {
   const state = event.state || { view: "home", modal: null };
   showView(state.view || "home", { pushHistory: false });
 
   if (state.modal === "profile") {
-    openProfileModal();
+    try {
+      const profile = await loadProfileModule();
+      profile.syncProfileDefaults?.();
+      profile.openProfileModal?.();
+    } catch (error) {
+      console.error(error);
+    }
   } else {
-    closeProfileModal({ fromHistory: true, skipHistory: true });
+    try {
+      const profile = await loadProfileModule(false);
+      profile.closeProfileModal?.({ fromHistory: true, skipHistory: true });
+    } catch {
+      // Ignore. Profile module may never have been loaded.
+    }
   }
 });
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    closeProfileModal({ fromHistory: false, skipHistory: true });
     closeFutureModal();
     closeJikanModal();
+    loadProfileModule(false).then((profile) => {
+      profile?.closeProfileModal?.({ fromHistory: false, skipHistory: true });
+    }).catch(() => {});
   }
 });
 
@@ -110,6 +132,18 @@ if (!history.state) {
 }
 syncTargetRules();
 showView("home", { pushHistory: false });
+
+async function loadProfileModule(allowCreate = true) {
+  if (!profileModulePromise && allowCreate) {
+    profileModulePromise = import("./profile.js?v=2");
+  }
+
+  if (!profileModulePromise) {
+    throw new Error("Profile module not loaded.");
+  }
+
+  return profileModulePromise;
+}
 
 function showView(view, { pushHistory = false } = {}) {
   currentView = view;
@@ -172,6 +206,7 @@ function syncTargetRules() {
   const source = els.sourcePlatform.value;
   const target = els.targetPlatform.value;
   const recommended = getRecommendedFormat(source, target);
+  const recommendationText = TARGET_RECOMMENDATION_TEXT[target] || "Recommended export updated.";
 
   for (const option of els.exportFormat.options) {
     const base = EXPORT_BASE_LABELS[option.value] || option.value;
@@ -191,15 +226,7 @@ function syncTargetRules() {
   if (!fallbackAllowed) els.fallbackSearch.checked = false;
 
   if (exportFormatHint) {
-    if (target === "MAL") {
-      exportFormatHint.textContent = "MyAnimeList works best with XML exports.";
-    } else if (target === "ANILIST") {
-      exportFormatHint.textContent = "AniList works best with JSON exports.";
-    } else if (target === "KITSU") {
-      exportFormatHint.textContent = "Kitsu in this version uses XML export only.";
-    } else {
-      exportFormatHint.textContent = "Recommended export updated.";
-    }
+    exportFormatHint.textContent = recommendationText;
   }
 
   if (fallbackHint) {
@@ -464,4 +491,4 @@ function renderPhantoms(phantoms, showUnmatched) {
 function buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType) {
   const ext = EXPORT_EXTENSIONS[exportFormat] || exportFormat.toLowerCase();
   return `${username}_${sourcePlatform.toLowerCase()}_to_${targetPlatform.toLowerCase()}_${mediaType.toLowerCase()}.${ext}`;
-      }
+                                }

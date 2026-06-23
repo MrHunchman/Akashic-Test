@@ -116,9 +116,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeFutureModal();
     closeJikanModal();
-    loadProfileModule(false).then((profile) => {
-      profile?.closeProfileModal?.({ fromHistory: false, skipHistory: true });
-    }).catch(() => {});
+
+    loadProfileModule(false)
+      .then((profile) => {
+        profile?.closeProfileModal?.({ fromHistory: false, skipHistory: true });
+      })
+      .catch(() => {});
   }
 });
 
@@ -130,6 +133,7 @@ els.exportFormat.addEventListener("change", syncTargetRules);
 if (!history.state) {
   history.replaceState({ view: "home", modal: null }, "", location.href);
 }
+
 syncTargetRules();
 showView("home", { pushHistory: false });
 
@@ -176,6 +180,7 @@ function showView(view, { pushHistory = false } = {}) {
 function openFutureModal(title, text) {
   futureModalTitle.textContent = title || "Coming soon";
   futureModalText.textContent = text || "This feature will be added in a future update.";
+  document.body.classList.add("modal-open");
   futureModal.classList.remove("hidden");
   futureModal.classList.add("flex");
 }
@@ -183,9 +188,14 @@ function openFutureModal(title, text) {
 function closeFutureModal() {
   futureModal.classList.add("hidden");
   futureModal.classList.remove("flex");
+
+  if (!document.querySelector(".fixed.inset-0.flex")) {
+    document.body.classList.remove("modal-open");
+  }
 }
 
 function openJikanModal() {
+  document.body.classList.add("modal-open");
   jikanModal.classList.remove("hidden");
   jikanModal.classList.add("flex");
 }
@@ -193,6 +203,10 @@ function openJikanModal() {
 function closeJikanModal() {
   jikanModal.classList.add("hidden");
   jikanModal.classList.remove("flex");
+
+  if (!document.querySelector(".fixed.inset-0.flex")) {
+    document.body.classList.remove("modal-open");
+  }
 }
 
 function getRecommendedFormat(source, target) {
@@ -491,4 +505,4 @@ function renderPhantoms(phantoms, showUnmatched) {
 function buildFilename(username, sourcePlatform, targetPlatform, exportFormat, mediaType) {
   const ext = EXPORT_EXTENSIONS[exportFormat] || exportFormat.toLowerCase();
   return `${username}_${sourcePlatform.toLowerCase()}_to_${targetPlatform.toLowerCase()}_${mediaType.toLowerCase()}.${ext}`;
-                                }
+      }

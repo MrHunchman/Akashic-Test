@@ -9,7 +9,7 @@
   --text: #f3f4f6;
   --muted: #9ca3af;
   --muted-2: #7c7c7c;
-  --accent: #8b5cf6;
+  --accent: #8a8a8a;
 }
 
 html {
@@ -23,26 +23,11 @@ body {
   overflow-x: hidden;
 }
 
-.page-bg {
-  min-height: 100vh;
-  background: var(--bg);
-  isolation: isolate;
-}
-
 .glass {
   background: var(--panel);
   border: 1px solid var(--border);
   backdrop-filter: none;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
-}
-
-.star-field,
-.orb,
-.orb-a,
-.orb-b,
-.orb-c,
-.badge-glow {
-  display: none !important;
 }
 
 .feature-pill {
@@ -74,10 +59,7 @@ body {
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
   position: relative;
   overflow: hidden;
-}
-
-.landing-card::before {
-  display: none;
+  text-decoration: none;
 }
 
 .landing-card:hover {
@@ -163,21 +145,9 @@ body {
   box-shadow: none;
 }
 
-.lift-on-hover {
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease;
-}
-
-.lift-on-hover:hover {
-  transform: translateY(-1px);
-}
-
 .panel-shell {
   position: relative;
   overflow: hidden;
-}
-
-.panel-shell::after {
-  display: none;
 }
 
 .modal-shell {
@@ -189,6 +159,10 @@ body {
   overflow-y: auto;
 }
 
+.profile-preview-panel {
+  min-width: 0;
+}
+
 .profile-preview-wrap {
   position: relative;
   border-radius: 16px;
@@ -196,10 +170,6 @@ body {
   background: var(--panel);
   border: 1px solid var(--border);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
-}
-
-.profile-preview-wrap::after {
-  display: none;
 }
 
 .profile-canvas {
@@ -273,8 +243,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .star-field,
-  .orb,
   .loader,
   .section-fade,
   .modal-shell {
@@ -284,8 +252,7 @@ body {
   .landing-card,
   .feature-pill,
   .input,
-  .btn-primary,
-  .lift-on-hover {
+  .btn-primary {
     transition: none !important;
   }
 }

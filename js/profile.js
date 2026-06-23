@@ -28,50 +28,43 @@ const nodes = {
 
   mainSourcePlatform: () => document.getElementById("sourcePlatform"),
   mainUsername: () => document.getElementById("username"),
-  mainMediaType: () => document.getElementById("mediaType"),
-
-  profileButtonsGrid: () =>
-    document.getElementById("profileGenerateBtn")?.closest(".grid") || null
+  mainMediaType: () => document.getElementById("mediaType")
 };
 
-const previewModalId = "profilePreviewModal";
-const previewImageId = "profilePreviewImage";
-const previewMetaId = "profilePreviewMeta";
-const previewCloseId = "profilePreviewClose";
-const previewDownloadId = "profilePreviewDownload";
+const preview = {
+  modalId: "profilePreviewModal",
+  imageId: "profilePreviewImage",
+  metaId: "profilePreviewMeta",
+  closeId: "profilePreviewClose",
+  downloadId: "profilePreviewDownload"
+};
 
 export function initProfileModule() {
   if (initialized) return;
   initialized = true;
 
-  ensureProfileControls();
   ensurePreviewModal();
+  ensureProfileControls();
 
-  const backdrop = nodes.profileModalBackdrop();
-  const closeBtn = nodes.profileModalClose();
-  const generateBtn = nodes.profileGenerateBtn();
-  const downloadBtn = nodes.profileDownloadBtn();
-  const previewBtn = document.getElementById("profilePreviewBtn");
+  nodes.profileModalBackdrop()?.addEventListener("click", () => closeProfileModal());
+  nodes.profileModalClose()?.addEventListener("click", () => closeProfileModal());
+  nodes.profileGenerateBtn()?.addEventListener("click", generateProfileCard);
+  nodes.profileDownloadBtn()?.addEventListener("click", downloadProfileCard);
 
-  backdrop?.addEventListener("click", () => closeProfileModal());
-  closeBtn?.addEventListener("click", () => closeProfileModal());
-  generateBtn?.addEventListener("click", generateProfileCard);
-  downloadBtn?.addEventListener("click", downloadProfileCard);
-  previewBtn?.addEventListener("click", openPreviewModal);
+  document.getElementById("profilePreviewBtn")?.addEventListener("click", openPreviewModal);
 
   [nodes.profileSourcePlatform(), nodes.profileUsername(), nodes.profileMediaType()].forEach((node) => {
     node?.addEventListener("input", resetProfilePreview);
     node?.addEventListener("change", resetProfilePreview);
   });
 
-  const previewModal = document.getElementById(previewModalId);
-  const previewBackdrop = previewModal?.querySelector("[data-preview-backdrop]");
-  const previewClose = document.getElementById(previewCloseId);
-  const previewDownload = document.getElementById(previewDownloadId);
+  document
+    .getElementById(preview.modalId)
+    ?.querySelector("[data-preview-backdrop]")
+    ?.addEventListener("click", closePreviewModal);
 
-  previewBackdrop?.addEventListener("click", closePreviewModal);
-  previewClose?.addEventListener("click", closePreviewModal);
-  previewDownload?.addEventListener("click", () => downloadProfileCard());
+  document.getElementById(preview.closeId)?.addEventListener("click", closePreviewModal);
+  document.getElementById(preview.downloadId)?.addEventListener("click", () => downloadProfileCard());
 
   resetProfilePreview();
 }
@@ -235,14 +228,12 @@ function buildProfileSummary(entries, sourcePlatform, mediaType, username) {
     const progress = Number(item?.progress) || 0;
     const statusCode = normalizeStatusToMalCode(item?.status);
     const title = String(item?.title || "Unknown").trim();
-    const note = String(item?.notes || item?.note || "").trim();
 
     return {
       title,
       score,
       progress,
       statusCode,
-      note,
       statusLabel: getProfileStatusLabel(statusCode, mediaType)
     };
   });
@@ -279,10 +270,8 @@ function buildProfileSummary(entries, sourcePlatform, mediaType, username) {
 
   const level = Math.max(
     1,
-    Math.min(999, Math.round((total / 22) + (completedCount / 3) + (progressTotal / 120)))
+    Math.min(999, Math.round(total / 22 + completedCount / 3 + progressTotal / 120))
   );
-
-  const tier = getTierLabel(level);
 
   return {
     total,
@@ -301,7 +290,7 @@ function buildProfileSummary(entries, sourcePlatform, mediaType, username) {
     progressLabel: getProgressLabel(mediaType),
     progressLabelShort: getProgressLabelShort(mediaType),
     level,
-    tier
+    tier: getTierLabel(level)
   };
 }
 
@@ -442,7 +431,7 @@ function canvasToBlob(canvas) {
 }
 
 function ensureProfileControls() {
-  const grid = nodes.profileButtonsGrid();
+  const grid = nodes.profileGenerateBtn()?.closest(".grid");
   if (!grid) return;
 
   if (!document.getElementById("profilePreviewBtn")) {
@@ -457,10 +446,10 @@ function ensureProfileControls() {
 }
 
 function ensurePreviewModal() {
-  if (document.getElementById(previewModalId)) return;
+  if (document.getElementById(preview.modalId)) return;
 
   const modal = document.createElement("div");
-  modal.id = previewModalId;
+  modal.id = preview.modalId;
   modal.className = "fixed inset-0 hidden items-center justify-center z-50 px-4";
 
   modal.innerHTML = `
@@ -472,10 +461,10 @@ function ensurePreviewModal() {
           <h3 class="text-xl md:text-2xl font-semibold text-white">Generated profile</h3>
         </div>
         <div class="flex items-center gap-2">
-          <button id="${previewDownloadId}" type="button" class="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-slate-100 transition">
+          <button id="${preview.downloadId}" type="button" class="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-slate-100 transition">
             Download
           </button>
-          <button id="${previewCloseId}" type="button" class="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-slate-100 transition">
+          <button id="${preview.closeId}" type="button" class="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-slate-100 transition">
             Close
           </button>
         </div>
@@ -484,12 +473,12 @@ function ensurePreviewModal() {
       <div class="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div class="p-5 md:p-7 bg-[#090d18]">
           <div class="rounded-[1.4rem] border border-white/10 bg-black/20 p-3 md:p-4">
-            <img id="${previewImageId}" alt="Profile preview" class="w-full h-auto rounded-[1.1rem] block" />
+            <img id="${preview.imageId}" alt="Profile preview" class="w-full h-auto rounded-[1.1rem] block" />
           </div>
         </div>
 
         <aside class="border-t lg:border-t-0 lg:border-l border-white/10 p-5 md:p-7 bg-white/[0.02]">
-          <p class="text-sm text-slate-300 leading-7" id="${previewMetaId}"></p>
+          <p class="text-sm text-slate-300 leading-7" id="${preview.metaId}"></p>
           <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-400 leading-6">
             This preview is generated locally from the canvas. No backend, no uploads.
           </div>
@@ -503,17 +492,17 @@ function ensurePreviewModal() {
 
 function openPreviewModal() {
   initProfileModule();
-  syncPreviewModal();
 
-  const modal = document.getElementById(previewModalId);
+  const modal = document.getElementById(preview.modalId);
   if (!modal) return;
 
+  syncPreviewModal();
   modal.classList.remove("hidden");
   modal.classList.add("flex");
 }
 
 function closePreviewModal() {
-  const modal = document.getElementById(previewModalId);
+  const modal = document.getElementById(preview.modalId);
   if (!modal) return;
 
   modal.classList.add("hidden");
@@ -521,8 +510,8 @@ function closePreviewModal() {
 }
 
 function syncPreviewModal() {
-  const img = document.getElementById(previewImageId);
-  const meta = document.getElementById(previewMetaId);
+  const img = document.getElementById(preview.imageId);
+  const meta = document.getElementById(preview.metaId);
   const canvas = nodes.profileCanvas();
 
   if (img && canvas) {
@@ -583,7 +572,6 @@ function drawProfileCard(canvas, summary) {
   ctx.fillRect(0, H - 3, W, 3);
 
   drawRoundedRect(ctx, 28, 28, W - 56, H - 56, 34, "rgba(13, 17, 28, 0.88)", "rgba(255,255,255,0.08)");
-
   drawPill(ctx, 66, 64, 254, 42, "AKASHIC PROFILE PRO", "#7c5cff");
 
   if (hasData) {
@@ -632,7 +620,6 @@ function drawProfileCard(canvas, summary) {
 
   drawTopEntryList(ctx, 806, 376, 518, 246, data);
   drawRecommendationGrid(ctx, 82, 750, 1240, 84, data);
-
   drawStatusBreakdown(ctx, 806, 668, 518, 180, data);
 
   drawActivityTab(ctx);
@@ -918,94 +905,4 @@ function hexToRgba(hex, alpha) {
   const b = parseInt(num.slice(4, 6), 16) || 255;
 
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function openPreviewModal() {
-  initProfileModule();
-  syncPreviewModal();
-
-  const modal = document.getElementById(previewModalId);
-  if (!modal) return;
-
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
-}
-
-function closePreviewModal() {
-  const modal = document.getElementById(previewModalId);
-  if (!modal) return;
-
-  modal.classList.add("hidden");
-  modal.classList.remove("flex");
-}
-
-function syncPreviewModal() {
-  const img = document.getElementById(previewImageId);
-  const meta = document.getElementById(previewMetaId);
-  const canvas = nodes.profileCanvas();
-
-  if (img && canvas) {
-    try {
-      img.src = canvas.toDataURL("image/png");
-    } catch {
-      img.removeAttribute("src");
-    }
-  }
-
-  if (meta) {
-    const data = normalizeSummary(lastProfileSummary);
-    meta.innerHTML = `
-      <strong class="text-white">${escapeHtml(data.username)}</strong><br>
-      ${escapeHtml(data.sourceLabel)} • ${escapeHtml(data.mediaLabel)}<br>
-      Entries: <strong class="text-white">${data.total}</strong><br>
-      Avg score: <strong class="text-white">${data.averageScore.toFixed(1)}</strong><br>
-      Highest: <strong class="text-white">${data.highestItem ? escapeHtml(data.highestItem.title) : "0.0"}</strong><br>
-      Level: <strong class="text-white">${data.level} (${escapeHtml(data.tier)})</strong>
-    `;
-  }
-}
-
-function ensurePreviewModal() {
-  if (document.getElementById(previewModalId)) return;
-
-  const modal = document.createElement("div");
-  modal.id = previewModalId;
-  modal.className = "fixed inset-0 hidden items-center justify-center z-50 px-4";
-
-  modal.innerHTML = `
-    <div data-preview-backdrop class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-    <div class="relative w-full max-w-5xl rounded-[1.8rem] border border-white/10 bg-[#0a0f1e] shadow-2xl overflow-hidden">
-      <div class="flex items-center justify-between gap-3 px-5 md:px-7 py-4 border-b border-white/10">
-        <div>
-          <p class="text-xs uppercase tracking-[0.28em] text-violet-300/80 mb-1">Preview</p>
-          <h3 class="text-xl md:text-2xl font-semibold text-white">Generated profile</h3>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="${previewDownloadId}" type="button" class="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-slate-100 transition">
-            Download
-          </button>
-          <button id="${previewCloseId}" type="button" class="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm text-slate-100 transition">
-            Close
-          </button>
-        </div>
-      </div>
-
-      <div class="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div class="p-5 md:p-7 bg-[#090d18]">
-          <div class="rounded-[1.4rem] border border-white/10 bg-black/20 p-3 md:p-4">
-            <img id="${previewImageId}" alt="Profile preview" class="w-full h-auto rounded-[1.1rem] block" />
-          </div>
-        </div>
-
-        <aside class="border-t lg:border-t-0 lg:border-l border-white/10 p-5 md:p-7 bg-white/[0.02]">
-          <p class="text-sm text-slate-300 leading-7" id="${previewMetaId}"></p>
-          <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-400 leading-6">
-            This preview is generated locally from the canvas. No backend, no uploads.
-          </div>
-        </aside>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-}
+               }

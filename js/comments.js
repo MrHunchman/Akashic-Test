@@ -12,6 +12,7 @@ const REACTIONS = [
 ];
 
 const STORAGE_KEY_LAST_POST = "akashic_last_comment_time";
+const STORAGE_KEY_LAST_NAME = "akashic_last_comment_name";
 const STORAGE_KEY_REACTION_STATE = "akashic_comment_reactions";
 const STORAGE_KEY_EDIT_TOKENS = "akashic_comment_edit_tokens";
 
@@ -44,6 +45,8 @@ init();
 function init() {
   if (!els.form || !els.list) return;
 
+  initNameField();
+
   els.form.addEventListener("submit", handleSubmit);
 
   els.prev?.addEventListener("click", () => {
@@ -71,6 +74,17 @@ function init() {
       openReactionTargetId = null;
       renderComments();
     }
+  });
+}
+
+function initNameField() {
+  const savedName = getStoredName();
+  if (els.name && !els.name.value.trim() && savedName) {
+    els.name.value = savedName;
+  }
+
+  els.name?.addEventListener("input", () => {
+    saveStoredName(els.name.value);
   });
 }
 
@@ -116,7 +130,7 @@ async function loadComments({ keepPage = true } = {}) {
 async function handleSubmit(event) {
   event.preventDefault();
 
-  const name = sanitizeText(els.name?.value || "").slice(0, 32);
+  const name = sanitizeText(els.name?.value || getStoredName() || "").slice(0, 32);
   const message = sanitizeText(els.text?.value || "").slice(0, 240);
 
   if (!message) {
@@ -145,6 +159,7 @@ async function handleSubmit(event) {
     }
 
     markPosted();
+    saveStoredName(name);
 
     if (els.text) els.text.value = "";
     currentPage = 1;
@@ -160,8 +175,8 @@ async function handleSubmit(event) {
   }
 }
 
-async function handleReplySubmit(parentId, textarea, submitBtn) {
-  const name = sanitizeText(els.name?.value || "").slice(0, 32);
+async function handleReplySubmit(parentId, nameInput, textarea, submitBtn) {
+  const name = sanitizeText(nameInput?.value || els.name?.value || getStoredName() || "").slice(0, 32);
   const message = sanitizeText(textarea.value || "").slice(0, 240);
 
   if (!message) {
@@ -191,6 +206,8 @@ async function handleReplySubmit(parentId, textarea, submitBtn) {
     }
 
     markPosted();
+    saveStoredName(name);
+
     openReplyForms.delete(parentId);
     await loadComments({ keepPage: true });
     setStatus("Reply posted.");
@@ -225,7 +242,7 @@ async function handleEditSubmit(targetId, textarea, saveBtn) {
       targetId,
       message,
       editToken,
-      adminKey: sanitizeText(els.name?.value || "")
+      adminKey: sanitizeText(els.name?.value || getStoredName() || "")
     });
 
     editingId = null;
@@ -253,7 +270,7 @@ async function handleDelete(targetId) {
       action: "delete",
       targetId,
       editToken,
-      adminKey: sanitizeText(els.name?.value || "")
+      adminKey: sanitizeText(els.name?.value || getStoredName() || "")
     });
 
     removeEditToken(targetId);
@@ -360,6 +377,8 @@ function renderNode(node, depth = 0) {
 
   const article = document.createElement("article");
   article.className = `comment-card ${depth > 0 ? "comment-card-reply" : ""}`;
+  article.style.position = "relative";
+  article.style.paddingRight = "132px";
 
   const meta = document.createElement("div");
   meta.className = "comment-meta";
@@ -385,33 +404,29 @@ function renderNode(node, depth = 0) {
   meta.appendChild(left);
   meta.appendChild(time);
 
-  const message = document.createElement("div");
-  message.className = "comment-message";
-  message.textContent = node.message || "";
-
-  article.appendChild(meta);
-  article.appendChild(message);
-
-  if (node.editedAt) {
-    const edited = document.createElement("div");
-    edited.className = "comment-time mt-1";
-    edited.textContent = "edited";
-    article.appendChild(edited);
-  }
-
-  article.appendChild(renderReactionSummary(node));
-
   const actions = document.createElement("div");
-  actions.className = "comment-actions";
+  actions.className = "comment-actions comment-actions-floating";
+  actions.style.position = "absolute";
+  actions.style.top = "0.75rem";
+  actions.style.right = "0.75rem";
+  actions.style.display = "flex";
+  actions.style.gap = "0.35rem";
+  actions.style.alignItems = "center";
+  actions.style.zIndex = "2";
+  actions.style.flexWrap = "nowrap";
 
   const reactionShell = document.createElement("div");
   reactionShell.className = "comment-reaction-trigger";
+  reactionShell.style.position = "relative";
   if (openReactionTargetId === node.id) reactionShell.classList.add("is-open");
 
   const reactionButton = document.createElement("button");
   reactionButton.type = "button";
   reactionButton.className = "comment-reply-button";
   reactionButton.textContent = "React";
+  reactionButton.style.borderRadius = "999px";
+  reactionButton.style.padding = "0.36rem 0.72rem";
+  reactionButton.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px #242a36";
 
   let longPressTimer = null;
   let longPressUsed = false;
@@ -452,14 +467,46 @@ function renderNode(node, depth = 0) {
 
   const picker = document.createElement("div");
   picker.className = "reaction-picker";
+  picker.style.display = "flex";
+  picker.style.gap = "2px";
+  picker.style.alignItems = "center";
+  picker.style.padding = "6px";
+  picker.style.borderRadius = "999px";
+  picker.style.border = "1px solid #242a36";
+  picker.style.background = "#0b0f16";
+  picker.style.boxShadow = "0 14px 32px rgba(0, 0, 0, 0.38)";
+  picker.style.opacity = "0";
+  picker.style.pointerEvents = "none";
+  picker.style.transform = "translateY(8px)";
+  picker.style.transition = "opacity 0.16s ease, transform 0.16s ease";
+  picker.style.position = "absolute";
+  picker.style.left = "0";
+  picker.style.bottom = "calc(100% + 10px)";
+  picker.style.zIndex = "10";
+
+  if (openReactionTargetId === node.id) {
+    picker.style.opacity = "1";
+    picker.style.pointerEvents = "auto";
+    picker.style.transform = "translateY(0)";
+  }
 
   for (const reaction of REACTIONS) {
     const option = document.createElement("button");
     option.type = "button";
     option.className = "reaction-option";
+    option.style.border = "none";
+    option.style.background = "transparent";
+    option.style.padding = "4px 6px";
+    option.style.fontSize = "1.08rem";
+    option.style.lineHeight = "1";
+    option.style.cursor = "pointer";
+
     if (getLocalReaction(node.id) === reaction.key) {
       option.classList.add("active");
+      option.style.outline = "2px solid rgba(139, 92, 246, 0.45)";
+      option.style.borderRadius = "999px";
     }
+
     option.textContent = reaction.emoji;
     option.title = reaction.label;
     option.addEventListener("click", () => handleReaction(node.id, reaction.key));
@@ -473,7 +520,10 @@ function renderNode(node, depth = 0) {
   const replyButton = document.createElement("button");
   replyButton.type = "button";
   replyButton.className = "comment-reply-button";
-  replyButton.textContent = openReplyForms.has(node.id) ? "Cancel reply" : "Reply";
+  replyButton.textContent = openReplyForms.has(node.id) ? "Cancel" : "Reply";
+  replyButton.style.borderRadius = "999px";
+  replyButton.style.padding = "0.36rem 0.72rem";
+  replyButton.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px #242a36";
   replyButton.addEventListener("click", () => {
     if (openReplyForms.has(node.id)) {
       openReplyForms.delete(node.id);
@@ -489,6 +539,9 @@ function renderNode(node, depth = 0) {
     editButton.type = "button";
     editButton.className = "comment-edit-button";
     editButton.textContent = "Edit";
+    editButton.style.borderRadius = "999px";
+    editButton.style.padding = "0.36rem 0.72rem";
+    editButton.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px #242a36";
     editButton.addEventListener("click", () => {
       editingId = editingId === node.id ? null : node.id;
       renderComments();
@@ -499,11 +552,32 @@ function renderNode(node, depth = 0) {
     deleteButton.type = "button";
     deleteButton.className = "comment-delete-button";
     deleteButton.textContent = "Delete";
+    deleteButton.style.borderRadius = "999px";
+    deleteButton.style.padding = "0.36rem 0.72rem";
+    deleteButton.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px #242a36";
     deleteButton.addEventListener("click", () => handleDelete(node.id));
     actions.appendChild(deleteButton);
   }
 
+  const message = document.createElement("div");
+  message.className = "comment-message";
+  message.textContent = node.message || "";
+
+  article.appendChild(meta);
   article.appendChild(actions);
+  article.appendChild(message);
+
+  if (node.editedAt) {
+    const edited = document.createElement("div");
+    edited.className = "comment-time mt-1";
+    edited.textContent = "edited";
+    article.appendChild(edited);
+  }
+
+  const reactionSummary = renderReactionSummary(node);
+  if (reactionSummary) {
+    article.appendChild(reactionSummary);
+  }
 
   if (editingId === node.id) {
     article.appendChild(renderEditForm(node));
@@ -550,31 +624,46 @@ function renderNode(node, depth = 0) {
 }
 
 function renderReactionSummary(node) {
-  const wrap = document.createElement("div");
-  wrap.className = "comment-reaction-summary";
+  const activeReactions = REACTIONS
+    .map((reaction) => ({
+      ...reaction,
+      count: Math.max(0, Number(node.reactions?.[reaction.key]) || 0)
+    }))
+    .filter((reaction) => reaction.count > 0);
 
-  const counts = REACTIONS.map((reaction) => {
-    const count = Number(node.reactions?.[reaction.key]) || 0;
-    return { ...reaction, count };
-  });
-
-  const hasAny = counts.some((item) => item.count > 0);
-  if (hasAny) {
-    wrap.classList.add("comment-reaction-summary-active");
+  if (!activeReactions.length) {
+    return null;
   }
 
-  for (const reaction of counts) {
+  const wrap = document.createElement("div");
+  wrap.className = "comment-reaction-summary comment-reaction-summary-active";
+  wrap.style.display = "flex";
+  wrap.style.flexWrap = "nowrap";
+  wrap.style.alignItems = "center";
+  wrap.style.marginTop = "0.6rem";
+  wrap.style.opacity = "0.92";
+
+  activeReactions.forEach((reaction, index) => {
     const pill = document.createElement("button");
     pill.type = "button";
-    pill.className = "comment-pill";
-    if (reaction.count > 0) pill.classList.add("comment-pill-active");
-    pill.style.opacity = reaction.count > 0 ? "1" : "0.42";
-    pill.style.filter = reaction.count > 0 ? "none" : "grayscale(0.15)";
+    pill.className = "comment-pill comment-reaction-badge";
+    pill.style.display = "inline-flex";
+    pill.style.alignItems = "center";
+    pill.style.gap = "4px";
+    pill.style.borderRadius = "999px";
+    pill.style.padding = "0.33rem 0.58rem";
+    pill.style.lineHeight = "1";
+    pill.style.fontSize = "0.78rem";
+    pill.style.marginLeft = index > 0 ? "-8px" : "0";
+    pill.style.position = "relative";
+    pill.style.zIndex = String(activeReactions.length - index);
+    pill.style.boxShadow = "0 0 0 1px #242a36";
+
     pill.textContent = `${reaction.emoji} ${reaction.count}`;
     pill.title = reaction.label;
     pill.addEventListener("click", () => handleReaction(node.id, reaction.key));
     wrap.appendChild(pill);
-  }
+  });
 
   return wrap;
 }
@@ -585,7 +674,14 @@ function renderReplyForm(parent) {
 
   const label = document.createElement("div");
   label.className = "comment-reply-label";
-  label.textContent = `Replying as ${sanitizeText(els.name?.value || "").slice(0, 32) || "Anonymous"}`;
+  label.textContent = "Write a reply";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "input input-dark max-w-[220px]";
+  nameInput.placeholder = "Name";
+  nameInput.maxLength = 32;
+  nameInput.value = sanitizeText(els.name?.value || getStoredName() || "");
 
   const textarea = document.createElement("textarea");
   textarea.className = "input input-dark comment-textarea";
@@ -610,13 +706,14 @@ function renderReplyForm(parent) {
   });
 
   submit.addEventListener("click", async () => {
-    await handleReplySubmit(parent.id, textarea, submit);
+    await handleReplySubmit(parent.id, nameInput, textarea, submit);
   });
 
   actions.appendChild(submit);
   actions.appendChild(cancel);
 
   wrap.appendChild(label);
+  wrap.appendChild(nameInput);
   wrap.appendChild(textarea);
   wrap.appendChild(actions);
 
@@ -672,9 +769,7 @@ function canManageNode(node) {
 }
 
 function getVisibleRoots() {
-  return comments
-    .map(pruneTree)
-    .filter(Boolean);
+  return comments.map(pruneTree).filter(Boolean);
 }
 
 function getTotalPages(list = getVisibleRoots()) {
@@ -841,6 +936,17 @@ function loadJson(key, fallback) {
 
 function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getStoredName() {
+  return sanitizeText(localStorage.getItem(STORAGE_KEY_LAST_NAME) || "");
+}
+
+function saveStoredName(value) {
+  const clean = sanitizeText(value || "").slice(0, 32);
+  if (clean) {
+    localStorage.setItem(STORAGE_KEY_LAST_NAME, clean);
+  }
 }
 
 function getLocalReaction(targetId) {

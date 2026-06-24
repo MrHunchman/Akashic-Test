@@ -229,6 +229,16 @@ body.modal-open {
 
 #commentsSection {
   scroll-margin-top: 24px;
+  position: relative;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+}
+
+#commentsSection > div {
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
 }
 
 .section-fade {
@@ -380,6 +390,13 @@ body.modal-open {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.6rem;
+  opacity: 0.88;
+  transition: opacity 0.25s ease, filter 0.25s ease, transform 0.25s ease;
+}
+
+.comment-reaction-summary-active {
+  opacity: 1;
+  filter: none;
 }
 
 .comment-pill {
@@ -390,12 +407,16 @@ body.modal-open {
   padding: 0.35rem 0.55rem;
   font-size: 0.78rem;
   line-height: 1;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
 }
 
 .comment-pill:hover {
   background: #171c26;
   border-color: #394150;
+}
+
+.comment-pill-active {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 0 18px rgba(139, 92, 246, 0.08);
 }
 
 .comment-replies {

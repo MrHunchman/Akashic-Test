@@ -398,7 +398,7 @@ function renderNode(node, depth = 0) {
 
   const time = document.createElement("div");
   time.className = "comment-time";
-  time.textContent = timeAgo(node.updatedAt || node.date);
+  time.textContent = timeAgo(node.date);
 
   meta.appendChild(left);
   meta.appendChild(time);
@@ -908,4 +908,4 @@ function buildChipButton(text, extraClass = "") {
   button.textContent = text;
   button.className = `comment-chip ${extraClass}`.trim();
   return button;
-      }
+                                  }

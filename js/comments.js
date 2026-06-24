@@ -379,6 +379,7 @@ function renderNode(node, depth = 0) {
   article.className = `comment-card ${depth > 0 ? "comment-card-reply" : ""}`;
   article.style.position = "relative";
   article.style.paddingRight = "132px";
+  article.style.paddingBottom = "2.7rem";
 
   const meta = document.createElement("div");
   meta.className = "comment-meta";
@@ -404,29 +405,30 @@ function renderNode(node, depth = 0) {
   meta.appendChild(left);
   meta.appendChild(time);
 
+  const message = document.createElement("div");
+  message.className = "comment-message";
+  message.textContent = node.message || "";
+
   const actions = document.createElement("div");
   actions.className = "comment-actions comment-actions-floating";
   actions.style.position = "absolute";
-  actions.style.top = "0.75rem";
   actions.style.right = "0.75rem";
+  actions.style.bottom = "0.75rem";
   actions.style.display = "flex";
   actions.style.gap = "0.35rem";
   actions.style.alignItems = "center";
-  actions.style.zIndex = "2";
+  actions.style.justifyContent = "flex-end";
   actions.style.flexWrap = "nowrap";
+  actions.style.zIndex = "2";
 
   const reactionShell = document.createElement("div");
   reactionShell.className = "comment-reaction-trigger";
   reactionShell.style.position = "relative";
   if (openReactionTargetId === node.id) reactionShell.classList.add("is-open");
 
-  const reactionButton = document.createElement("button");
-  reactionButton.type = "button";
-  reactionButton.className = "comment-reply-button";
-  reactionButton.textContent = "React";
-  reactionButton.style.borderRadius = "999px";
-  reactionButton.style.padding = "0.36rem 0.72rem";
-  reactionButton.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px #242a36";
+  const reactionButton = buildTinyButton("React");
+  reactionButton.classList.add("comment-reply-button");
+  reactionButton.style.position = "relative";
 
   let longPressTimer = null;
   let longPressUsed = false;
@@ -467,9 +469,12 @@ function renderNode(node, depth = 0) {
 
   const picker = document.createElement("div");
   picker.className = "reaction-picker";
+  picker.style.position = "absolute";
+  picker.style.left = "0";
+  picker.style.bottom = "calc(100% + 10px)";
   picker.style.display = "flex";
-  picker.style.gap = "2px";
   picker.style.alignItems = "center";
+  picker.style.gap = "2px";
   picker.style.padding = "6px";
   picker.style.borderRadius = "999px";
   picker.style.border = "1px solid #242a36";
@@ -479,10 +484,8 @@ function renderNode(node, depth = 0) {
   picker.style.pointerEvents = "none";
   picker.style.transform = "translateY(8px)";
   picker.style.transition = "opacity 0.16s ease, transform 0.16s ease";
-  picker.style.position = "absolute";
-  picker.style.left = "0";
-  picker.style.bottom = "calc(100% + 10px)";
   picker.style.zIndex = "10";
+  picker.style.whiteSpace = "nowrap";
 
   if (openReactionTargetId === node.id) {
     picker.style.opacity = "1";
@@ -500,11 +503,12 @@ function renderNode(node, depth = 0) {
     option.style.fontSize = "1.08rem";
     option.style.lineHeight = "1";
     option.style.cursor = "pointer";
+    option.style.borderRadius = "999px";
 
     if (getLocalReaction(node.id) === reaction.key) {
       option.classList.add("active");
       option.style.outline = "2px solid rgba(139, 92, 246, 0.45)";
-      option.style.borderRadius = "999px";
+      option.style.outlineOffset = "1px";
     }
 
     option.textContent = reaction.emoji;
@@ -515,15 +519,9 @@ function renderNode(node, depth = 0) {
 
   reactionShell.appendChild(reactionButton);
   reactionShell.appendChild(picker);
-  actions.appendChild(reactionShell);
 
-  const replyButton = document.createElement("button");
-  replyButton.type = "button";
-  replyButton.className = "comment-reply-button";
-  replyButton.textContent = openReplyForms.has(node.id) ? "Cancel" : "Reply";
-  replyButton.style.borderRadius = "999px";
-  replyButton.style.padding = "0.36rem 0.72rem";
-  replyButton.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px #242a36";
+  const replyButton = buildTinyButton(openReplyForms.has(node.id) ? "Cancel" : "Reply");
+  replyButton.classList.add("comment-reply-button");
   replyButton.addEventListener("click", () => {
     if (openReplyForms.has(node.id)) {
       openReplyForms.delete(node.id);
@@ -532,51 +530,40 @@ function renderNode(node, depth = 0) {
     }
     renderComments();
   });
+
+  actions.appendChild(reactionShell);
   actions.appendChild(replyButton);
 
   if (canManageNode(node)) {
-    const editButton = document.createElement("button");
-    editButton.type = "button";
-    editButton.className = "comment-edit-button";
-    editButton.textContent = "Edit";
-    editButton.style.borderRadius = "999px";
-    editButton.style.padding = "0.36rem 0.72rem";
-    editButton.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px #242a36";
+    const editButton = buildTinyButton("Edit");
+    editButton.classList.add("comment-edit-button");
     editButton.addEventListener("click", () => {
       editingId = editingId === node.id ? null : node.id;
       renderComments();
     });
     actions.appendChild(editButton);
 
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "comment-delete-button";
-    deleteButton.textContent = "Delete";
-    deleteButton.style.borderRadius = "999px";
-    deleteButton.style.padding = "0.36rem 0.72rem";
-    deleteButton.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.03), 0 0 0 1px #242a36";
+    const deleteButton = buildTinyButton("Delete");
+    deleteButton.classList.add("comment-delete-button");
     deleteButton.addEventListener("click", () => handleDelete(node.id));
     actions.appendChild(deleteButton);
   }
 
-  const message = document.createElement("div");
-  message.className = "comment-message";
-  message.textContent = node.message || "";
-
   article.appendChild(meta);
-  article.appendChild(actions);
   article.appendChild(message);
+
+  const reactionSummary = renderReactionSummary(node);
+  if (reactionSummary) {
+    article.appendChild(reactionSummary);
+  }
+
+  article.appendChild(actions);
 
   if (node.editedAt) {
     const edited = document.createElement("div");
     edited.className = "comment-time mt-1";
     edited.textContent = "edited";
     article.appendChild(edited);
-  }
-
-  const reactionSummary = renderReactionSummary(node);
-  if (reactionSummary) {
-    article.appendChild(reactionSummary);
   }
 
   if (editingId === node.id) {
@@ -635,37 +622,48 @@ function renderReactionSummary(node) {
     return null;
   }
 
-  const wrap = document.createElement("div");
-  wrap.className = "comment-reaction-summary comment-reaction-summary-active";
-  wrap.style.display = "flex";
-  wrap.style.flexWrap = "nowrap";
-  wrap.style.alignItems = "center";
-  wrap.style.marginTop = "0.6rem";
-  wrap.style.opacity = "0.92";
+  const bubble = document.createElement("button");
+  bubble.type = "button";
+  bubble.className = "comment-reaction-summary comment-reaction-bubble";
+  bubble.style.display = "inline-flex";
+  bubble.style.alignItems = "center";
+  bubble.style.gap = "4px";
+  bubble.style.padding = "0.33rem 0.72rem";
+  bubble.style.borderRadius = "999px";
+  bubble.style.border = "1px solid #242a36";
+  bubble.style.background = "#0f131b";
+  bubble.style.color = "#d4d4d8";
+  bubble.style.fontSize = "0.78rem";
+  bubble.style.lineHeight = "1";
+  bubble.style.whiteSpace = "nowrap";
+  bubble.style.boxShadow = "0 0 0 1px #242a36";
+  bubble.style.cursor = "pointer";
+  bubble.style.marginTop = "0.6rem";
 
   activeReactions.forEach((reaction, index) => {
-    const pill = document.createElement("button");
-    pill.type = "button";
-    pill.className = "comment-pill comment-reaction-badge";
-    pill.style.display = "inline-flex";
-    pill.style.alignItems = "center";
-    pill.style.gap = "4px";
-    pill.style.borderRadius = "999px";
-    pill.style.padding = "0.33rem 0.58rem";
-    pill.style.lineHeight = "1";
-    pill.style.fontSize = "0.78rem";
-    pill.style.marginLeft = index > 0 ? "-8px" : "0";
-    pill.style.position = "relative";
-    pill.style.zIndex = String(activeReactions.length - index);
-    pill.style.boxShadow = "0 0 0 1px #242a36";
+    if (index > 0) {
+      const spacer = document.createElement("span");
+      spacer.textContent = " ";
+      spacer.style.width = "2px";
+      bubble.appendChild(spacer);
+    }
 
-    pill.textContent = `${reaction.emoji} ${reaction.count}`;
-    pill.title = reaction.label;
-    pill.addEventListener("click", () => handleReaction(node.id, reaction.key));
-    wrap.appendChild(pill);
+    const item = document.createElement("span");
+    item.style.display = "inline-flex";
+    item.style.alignItems = "center";
+    item.style.gap = "3px";
+    item.style.whiteSpace = "nowrap";
+    item.textContent = `${reaction.emoji} ${reaction.count}`;
+
+    bubble.appendChild(item);
   });
 
-  return wrap;
+  bubble.addEventListener("click", () => {
+    openReactionTargetId = node.id;
+    renderComments();
+  });
+
+  return bubble;
 }
 
 function renderReplyForm(parent) {
@@ -691,15 +689,11 @@ function renderReplyForm(parent) {
   const actions = document.createElement("div");
   actions.className = "comment-reply-actions";
 
-  const submit = document.createElement("button");
-  submit.type = "button";
-  submit.className = "comment-reply-submit";
-  submit.textContent = "Post reply";
+  const submit = buildTinyButton("Post reply");
+  submit.classList.add("comment-reply-submit");
 
-  const cancel = document.createElement("button");
-  cancel.type = "button";
-  cancel.className = "comment-reply-cancel";
-  cancel.textContent = "Cancel";
+  const cancel = buildTinyButton("Cancel");
+  cancel.classList.add("comment-reply-cancel");
   cancel.addEventListener("click", () => {
     openReplyForms.delete(parent.id);
     renderComments();
@@ -736,15 +730,11 @@ function renderEditForm(node) {
   const actions = document.createElement("div");
   actions.className = "comment-edit-actions";
 
-  const save = document.createElement("button");
-  save.type = "button";
-  save.className = "comment-edit-save";
-  save.textContent = "Save";
+  const save = buildTinyButton("Save");
+  save.classList.add("comment-edit-save");
 
-  const cancel = document.createElement("button");
-  cancel.type = "button";
-  cancel.className = "comment-edit-cancel";
-  cancel.textContent = "Cancel";
+  const cancel = buildTinyButton("Cancel");
+  cancel.classList.add("comment-edit-cancel");
   cancel.addEventListener("click", () => {
     editingId = null;
     renderComments();
@@ -978,3 +968,20 @@ function removeEditToken(id) {
   delete editTokens[id];
   saveJson(STORAGE_KEY_EDIT_TOKENS, editTokens);
 }
+
+function buildTinyButton(text) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = text;
+  button.style.border = "1px solid #242a36";
+  button.style.background = "#0f131b";
+  button.style.color = "#d4d4d8";
+  button.style.borderRadius = "999px";
+  button.style.padding = "0.36rem 0.72rem";
+  button.style.fontSize = "0.78rem";
+  button.style.lineHeight = "1.1";
+  button.style.minHeight = "22px";
+  button.style.transition = "background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease";
+  button.style.boxShadow = "0 0 0 1px #242a36";
+  return button;
+      }

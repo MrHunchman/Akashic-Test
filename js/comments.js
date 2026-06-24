@@ -399,6 +399,9 @@ function renderNode(node, depth = 0) {
     article.appendChild(edited);
   }
 
+  const reactionSummary = renderReactionSummary(node);
+  article.appendChild(reactionSummary);
+
   const actions = document.createElement("div");
   actions.className = "comment-actions";
 
@@ -545,6 +548,36 @@ function renderNode(node, depth = 0) {
   }
 
   return article;
+}
+
+function renderReactionSummary(node) {
+  const wrap = document.createElement("div");
+  wrap.className = "comment-reaction-summary";
+
+  const counts = REACTIONS.map((reaction) => {
+    const count = Number(node.reactions?.[reaction.key]) || 0;
+    return { ...reaction, count };
+  });
+
+  const hasAny = counts.some((item) => item.count > 0);
+  if (hasAny) {
+    wrap.classList.add("comment-reaction-summary-active");
+  }
+
+  for (const reaction of counts) {
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "comment-pill";
+    if (reaction.count > 0) pill.classList.add("comment-pill-active");
+    pill.style.opacity = reaction.count > 0 ? "1" : "0.42";
+    pill.style.filter = reaction.count > 0 ? "none" : "grayscale(0.15)";
+    pill.textContent = `${reaction.emoji} ${reaction.count}`;
+    pill.title = reaction.label;
+    pill.addEventListener("click", () => handleReaction(node.id, reaction.key));
+    wrap.appendChild(pill);
+  }
+
+  return wrap;
 }
 
 function renderReplyForm(parent) {
@@ -839,4 +872,4 @@ function removeEditToken(id) {
   if (!id) return;
   delete editTokens[id];
   saveJson(STORAGE_KEY_EDIT_TOKENS, editTokens);
-  }
+                      }

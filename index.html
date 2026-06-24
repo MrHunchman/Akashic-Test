@@ -13,23 +13,22 @@
   <main class="relative min-h-screen">
     <section class="mx-auto max-w-6xl px-4 py-10 md:py-14">
       <div class="mx-auto mb-10 max-w-3xl">
-  <div class="rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-4 text-left shadow-lg">
-    <p class="text-[11px] uppercase tracking-[0.3em] text-zinc-500 mb-2">Announcement</p>
+        <div class="rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-4 text-left shadow-lg">
+          <p class="text-[11px] uppercase tracking-[0.3em] text-zinc-500 mb-2">Announcement</p>
 
-    <h2 class="text-lg md:text-xl font-semibold text-white">
-      Update 1.0 - First Beta Release
-    </h2>
+          <h2 class="text-lg md:text-xl font-semibold text-white">
+            Update 1.0 - First Beta Release
+          </h2>
 
-    <div class="mt-2 text-sm md:text-base text-zinc-400 leading-7">
-      <ul class="list-disc list-inside space-y-1">
-        <li>New profile generation page is live. Scraper and profile tools now open as separate pages.</li>
-        <li>We now have a profile generator based on your data from AL, MAL, and Kitsu.</li>
-        <li>Updated more settings, separating them into their own pages with specific conditions.</li>
-      </ul>
-    </div>
-  </div>
-</div>
-
+          <div class="mt-2 text-sm md:text-base text-zinc-400 leading-7">
+            <ul class="list-disc list-inside space-y-1">
+              <li>New profile generation page is live. Scraper and profile tools now open as separate pages.</li>
+              <li>We now have a profile generator based on your data from AL, MAL, and Kitsu.</li>
+              <li>Updated more settings, separating them into their own pages with specific conditions.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto text-sm text-zinc-300">
         <div class="feature-pill">AniList, MAL, Kitsu</div>
@@ -98,20 +97,54 @@
         </button>
       </section>
 
-<section class="mt-12 max-w-5xl mx-auto">
-  <div class="rounded-2xl border border-zinc-800 bg-zinc-900/90 p-5 md:p-6">
-    <div class="mb-5">
-      <p class="text-[11px] uppercase tracking-[0.3em] text-zinc-500">Comments</p>
-      <h2 class="mt-2 text-xl md:text-2xl font-semibold text-white">Community Comments</h2>
-      <p class="mt-2 text-sm md:text-base text-zinc-400 leading-7">
-        Comments are coming soon, still working on it.
-      </p>
-    </div>
+      <section id="commentsSection" class="mt-12 max-w-5xl mx-auto">
+        <div class="rounded-2xl border border-zinc-800 bg-zinc-900/90 p-5 md:p-6 shadow-xl">
+          <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p class="text-[11px] uppercase tracking-[0.3em] text-zinc-500">Community</p>
+              <h2 class="mt-2 text-xl md:text-2xl font-semibold text-white">Comments</h2>
+              <p class="mt-2 text-sm md:text-base text-zinc-400 leading-7">
+                Read updates, leave feedback, and talk about Akashic here.
+              </p>
+            </div>
 
-    <div class="giscus"></div>
-  </div>
-</section>
-      
+            <div class="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+              <span id="commentCount">0</span> comments
+            </div>
+          </div>
+
+          <form id="commentForm" class="mt-6 grid gap-3">
+            <div class="grid gap-3 md:grid-cols-2">
+              <input id="commentName" class="input input-dark" type="text" maxlength="32" placeholder="Your name" />
+              <textarea id="commentText" class="input input-dark comment-textarea" maxlength="240" placeholder="Write a comment"></textarea>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <button id="commentSubmit" class="btn-primary !w-auto px-5 py-3" type="submit">
+                Post comment
+              </button>
+              <span id="commentStatus" class="text-sm text-zinc-500"></span>
+            </div>
+          </form>
+
+          <div class="mt-6 space-y-3">
+            <div id="commentList" class="space-y-3"></div>
+          </div>
+
+          <div class="mt-6 flex items-center justify-between gap-3">
+            <button id="commentPrev" type="button" class="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed">
+              Previous
+            </button>
+
+            <div id="commentPageInfo" class="text-sm text-zinc-500"></div>
+
+            <button id="commentNext" type="button" class="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed">
+              Next
+            </button>
+          </div>
+        </div>
+      </section>
+
       <p class="pt-8 md:pt-12 text-sm text-zinc-500 text-center">
         Your data. Your universe.
       </p>
@@ -129,5 +162,6 @@
   </main>
 
   <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/comments.js"></script>
 </body>
 </html>

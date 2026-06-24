@@ -14,7 +14,6 @@ const REACTIONS = [
 const STORAGE_KEY_LAST_POST = "akashic_last_comment_time";
 const STORAGE_KEY_REACTION_STATE = "akashic_comment_reactions";
 const STORAGE_KEY_EDIT_TOKENS = "akashic_comment_edit_tokens";
-const STORAGE_KEY_ADMIN_KEY = "akashic_admin_key";
 
 const els = {
   count: document.getElementById("commentCount"),
@@ -26,13 +25,7 @@ const els = {
   list: document.getElementById("commentList"),
   prev: document.getElementById("commentPrev"),
   next: document.getElementById("commentNext"),
-  pageInfo: document.getElementById("commentPageInfo"),
-  adminBtn: document.getElementById("commentAdminBtn"),
-  adminPanel: document.getElementById("commentAdminPanel"),
-  adminInput: document.getElementById("adminKeyInput"),
-  adminSave: document.getElementById("adminKeySave"),
-  adminClear: document.getElementById("adminKeyClear"),
-  adminModeText: document.getElementById("adminModeText")
+  pageInfo: document.getElementById("commentPageInfo")
 };
 
 let comments = [];
@@ -42,6 +35,7 @@ let editingId = null;
 let openReplyForms = new Set();
 let expandedReplies = new Set();
 let openReactionTargetId = null;
+
 let reactionState = loadJson(STORAGE_KEY_REACTION_STATE, {});
 let editTokens = loadJson(STORAGE_KEY_EDIT_TOKENS, {});
 
@@ -50,7 +44,6 @@ init();
 function init() {
   if (!els.form || !els.list) return;
 
-  setupAdminUI();
   els.form.addEventListener("submit", handleSubmit);
 
   els.prev?.addEventListener("click", () => {
@@ -81,76 +74,16 @@ function init() {
   });
 }
 
-function setupAdminUI() {
-  els.adminBtn?.addEventListener("click", () => {
-    if (els.adminPanel) {
-      els.adminPanel.classList.toggle("hidden");
-    }
-  });
-
-  els.adminSave?.addEventListener("click", () => {
-    const key = sanitizeText(els.adminInput?.value || "");
-    if (!key) {
-      setStatus("Enter the admin key first.");
-      return;
-    }
-
-    sessionStorage.setItem(STORAGE_KEY_ADMIN_KEY, key);
-    updateAdminModeText();
-    setStatus("Admin mode enabled.");
-    loadComments({ keepPage: true });
-  });
-
-  els.adminClear?.addEventListener("click", () => {
-    sessionStorage.removeItem(STORAGE_KEY_ADMIN_KEY);
-    if (els.adminInput) els.adminInput.value = "";
-    updateAdminModeText();
-    setStatus("Admin mode disabled.");
-    loadComments({ keepPage: true });
-  });
-
-  if (els.adminInput) {
-    const saved = sessionStorage.getItem(STORAGE_KEY_ADMIN_KEY);
-    if (saved) els.adminInput.value = saved;
-  }
-
-  updateAdminModeText();
-}
-
-function isAdminMode() {
-  return Boolean(sessionStorage.getItem(STORAGE_KEY_ADMIN_KEY));
-}
-
-function getAdminKey() {
-  return sessionStorage.getItem(STORAGE_KEY_ADMIN_KEY) || "";
-}
-
-function updateAdminModeText() {
-  if (!els.adminModeText) return;
-
-  if (isAdminMode()) {
-    els.adminModeText.textContent = "Admin mode is on. Hidden comments and moderation controls are visible.";
-  } else {
-    els.adminModeText.textContent = "Admin mode is off.";
-  }
-}
-
 async function loadComments({ keepPage = true } = {}) {
   setStatus("Loading comments...");
   setLoading(true);
 
   try {
-    const headers = {
-      Accept: "application/json"
-    };
-
-    if (isAdminMode()) {
-      headers["x-admin-key"] = getAdminKey();
-    }
-
     const res = await fetch(COMMENTS_API_URL, {
       method: "GET",
-      headers
+      headers: {
+        Accept: "application/json"
+      }
     });
 
     if (!res.ok) {
@@ -159,7 +92,6 @@ async function loadComments({ keepPage = true } = {}) {
 
     const data = await res.json();
     comments = Array.isArray(data) ? normalizeTree(data) : [];
-    comments.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
     if (!keepPage) {
       currentPage = 1;
@@ -168,6 +100,7 @@ async function loadComments({ keepPage = true } = {}) {
     openReplyForms.clear();
     editingId = null;
     openReactionTargetId = null;
+
     renderComments();
     setStatus("");
   } catch (error) {
@@ -183,7 +116,7 @@ async function loadComments({ keepPage = true } = {}) {
 async function handleSubmit(event) {
   event.preventDefault();
 
-  const name = sanitizeText(els.name?.value || "").slice(0, 32) || "Anonymous";
+  const name = sanitizeText(els.name?.value || "").slice(0, 32);
   const message = sanitizeText(els.text?.value || "").slice(0, 240);
 
   if (!message) {
@@ -202,7 +135,8 @@ async function handleSubmit(event) {
   try {
     const result = await postJson({
       action: "comment",
-      username: name,
+      username: name || "Anonymous",
+      adminKey: name || "",
       message
     });
 
@@ -211,8 +145,10 @@ async function handleSubmit(event) {
     }
 
     markPosted();
+
     if (els.text) els.text.value = "";
     currentPage = 1;
+
     await loadComments({ keepPage: false });
     setStatus("Comment posted.");
     syncCooldownUI();
@@ -225,7 +161,7 @@ async function handleSubmit(event) {
 }
 
 async function handleReplySubmit(parentId, textarea, submitBtn) {
-  const name = sanitizeText(els.name?.value || "").slice(0, 32) || "Anonymous";
+  const name = sanitizeText(els.name?.value || "").slice(0, 32);
   const message = sanitizeText(textarea.value || "").slice(0, 240);
 
   if (!message) {
@@ -245,7 +181,8 @@ async function handleReplySubmit(parentId, textarea, submitBtn) {
     const result = await postJson({
       action: "reply",
       parentId,
-      username: name,
+      username: name || "Anonymous",
+      adminKey: name || "",
       message
     });
 
@@ -274,7 +211,7 @@ async function handleEditSubmit(targetId, textarea, saveBtn) {
   }
 
   const editToken = getEditToken(targetId);
-  if (!editToken && !isAdminMode()) {
+  if (!editToken) {
     setStatus("You do not have permission to edit this comment.");
     return;
   }
@@ -287,8 +224,9 @@ async function handleEditSubmit(targetId, textarea, saveBtn) {
       action: "edit",
       targetId,
       message,
-      editToken
-    }, { adminAllowed: true });
+      editToken,
+      adminKey: sanitizeText(els.name?.value || "")
+    });
 
     editingId = null;
     await loadComments({ keepPage: true });
@@ -302,7 +240,7 @@ async function handleEditSubmit(targetId, textarea, saveBtn) {
 
 async function handleDelete(targetId) {
   const editToken = getEditToken(targetId);
-  if (!editToken && !isAdminMode()) {
+  if (!editToken) {
     setStatus("You do not have permission to delete this comment.");
     return;
   }
@@ -314,40 +252,20 @@ async function handleDelete(targetId) {
     await postJson({
       action: "delete",
       targetId,
-      editToken
-    }, { adminAllowed: true });
+      editToken,
+      adminKey: sanitizeText(els.name?.value || "")
+    });
 
     removeEditToken(targetId);
     editingId = null;
     openReplyForms.delete(targetId);
     expandedReplies.delete(targetId);
+
     await loadComments({ keepPage: true });
     setStatus("Comment deleted.");
   } catch (error) {
     console.error(error);
     setStatus(`Could not delete comment: ${error.message}`);
-  }
-}
-
-async function handleModerate(targetId, hidden) {
-  if (!isAdminMode()) {
-    setStatus("Admin mode is required for moderation.");
-    return;
-  }
-
-  setStatus(hidden ? "Hiding comment..." : "Showing comment...");
-  try {
-    await postJson({
-      action: "moderate",
-      targetId,
-      hidden
-    }, { adminAllowed: true });
-
-    await loadComments({ keepPage: true });
-    setStatus(hidden ? "Comment hidden." : "Comment shown.");
-  } catch (error) {
-    console.error(error);
-    setStatus(`Could not moderate comment: ${error.message}`);
   }
 }
 
@@ -378,19 +296,13 @@ async function handleReaction(targetId, chosenReaction) {
   }
 }
 
-async function postJson(payload, { adminAllowed = false } = {}) {
-  const headers = {
-    "Content-Type": "application/json",
-    Accept: "application/json"
-  };
-
-  if (adminAllowed && isAdminMode()) {
-    headers["x-admin-key"] = getAdminKey();
-  }
-
+async function postJson(payload) {
   const res = await fetch(COMMENTS_API_URL, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
     body: JSON.stringify(payload)
   });
 
@@ -435,14 +347,15 @@ function renderComments() {
 
   const fragment = document.createDocumentFragment();
   for (const item of pageItems) {
-    fragment.appendChild(renderNode(item, 0));
+    const node = renderNode(item, 0);
+    if (node) fragment.appendChild(node);
   }
   els.list.appendChild(fragment);
 }
 
 function renderNode(node, depth = 0) {
-  if (!isAdminMode() && node.hidden) {
-    return document.createDocumentFragment();
+  if (!node || node.hidden || node.deleted) {
+    return null;
   }
 
   const article = document.createElement("article");
@@ -465,20 +378,6 @@ function renderNode(node, depth = 0) {
     left.appendChild(badge);
   }
 
-  if (node.hidden) {
-    const hiddenBadge = document.createElement("span");
-    hiddenBadge.className = "moderation-badge";
-    hiddenBadge.textContent = "HIDDEN";
-    left.appendChild(hiddenBadge);
-  }
-
-  if (node.deleted) {
-    const deletedBadge = document.createElement("span");
-    deletedBadge.className = "moderation-badge";
-    deletedBadge.textContent = "DELETED";
-    left.appendChild(deletedBadge);
-  }
-
   const time = document.createElement("div");
   time.className = "comment-time";
   time.textContent = timeAgo(node.updatedAt || node.date);
@@ -488,33 +387,17 @@ function renderNode(node, depth = 0) {
 
   const message = document.createElement("div");
   message.className = "comment-message";
-  message.textContent = node.deleted ? "[deleted]" : (node.message || "");
+  message.textContent = node.message || "";
 
   article.appendChild(meta);
   article.appendChild(message);
 
-  if (node.editedAt && !node.deleted) {
+  if (node.editedAt) {
     const edited = document.createElement("div");
     edited.className = "comment-time mt-1";
     edited.textContent = "edited";
     article.appendChild(edited);
   }
-
-  const reactionSummary = document.createElement("div");
-  reactionSummary.className = "comment-reaction-summary";
-
-  for (const reaction of REACTIONS) {
-    const pill = document.createElement("button");
-    pill.type = "button";
-    pill.className = "comment-pill";
-    const count = Number(node.reactions?.[reaction.key]) || 0;
-    pill.textContent = `${reaction.emoji} ${count}`;
-    pill.title = reaction.label;
-    pill.addEventListener("click", () => handleReaction(node.id, reaction.key));
-    reactionSummary.appendChild(pill);
-  }
-
-  article.appendChild(reactionSummary);
 
   const actions = document.createElement("div");
   actions.className = "comment-actions";
@@ -618,15 +501,6 @@ function renderNode(node, depth = 0) {
     actions.appendChild(deleteButton);
   }
 
-  if (isAdminMode()) {
-    const modButton = document.createElement("button");
-    modButton.type = "button";
-    modButton.className = node.hidden ? "comment-show-button" : "comment-hide-button";
-    modButton.textContent = node.hidden ? "Show" : "Hide";
-    modButton.addEventListener("click", () => handleModerate(node.id, !node.hidden));
-    actions.appendChild(modButton);
-  }
-
   article.appendChild(actions);
 
   if (editingId === node.id) {
@@ -645,6 +519,7 @@ function renderNode(node, depth = 0) {
     toggle.textContent = expandedReplies.has(node.id)
       ? `Hide replies (${replies.length})`
       : `Show replies (${replies.length})`;
+
     toggle.addEventListener("click", () => {
       if (expandedReplies.has(node.id)) {
         expandedReplies.delete(node.id);
@@ -653,6 +528,7 @@ function renderNode(node, depth = 0) {
       }
       renderComments();
     });
+
     article.appendChild(toggle);
   }
 
@@ -726,7 +602,7 @@ function renderEditForm(node) {
   const textarea = document.createElement("textarea");
   textarea.className = "input input-dark comment-textarea";
   textarea.maxLength = 240;
-  textarea.value = node.deleted ? "" : (node.message || "");
+  textarea.value = node.message || "";
 
   const actions = document.createElement("div");
   actions.className = "comment-edit-actions";
@@ -760,11 +636,13 @@ function renderEditForm(node) {
 }
 
 function canManageNode(node) {
-  return isAdminMode() || Boolean(getEditToken(node.id));
+  return Boolean(getEditToken(node.id));
 }
 
 function getVisibleRoots() {
-  return comments.filter((node) => isAdminMode() || !node.hidden);
+  return comments
+    .map(pruneTree)
+    .filter(Boolean);
 }
 
 function getTotalPages(list = getVisibleRoots()) {
@@ -871,7 +749,9 @@ function sanitizeText(value) {
 }
 
 function normalizeTree(list) {
-  return list.map(normalizeNode).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  return list
+    .map(normalizeNode)
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 }
 
 function normalizeNode(node) {
@@ -888,6 +768,19 @@ function normalizeNode(node) {
     hidden: Boolean(node?.hidden),
     deleted: Boolean(node?.deleted),
     reactions: normalizeReactions(node?.reactions),
+    replies
+  };
+}
+
+function pruneTree(node) {
+  if (!node || node.hidden || node.deleted) return null;
+
+  const replies = Array.isArray(node.replies)
+    ? node.replies.map(pruneTree).filter(Boolean)
+    : [];
+
+  return {
+    ...node,
     replies
   };
 }
@@ -946,8 +839,4 @@ function removeEditToken(id) {
   if (!id) return;
   delete editTokens[id];
   saveJson(STORAGE_KEY_EDIT_TOKENS, editTokens);
-}
-
-function countVisibleTopLevel() {
-  return getVisibleRoots().length;
-}
+  }

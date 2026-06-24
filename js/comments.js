@@ -1,14 +1,20 @@
 const COMMENTS_API_URL = "https://nameakashic-comments.akashicmain.workers.dev/";
 const COMMENTS_PER_PAGE = 5;
 const COOLDOWN_MS = 60_000;
-const STORAGE_KEY_LAST_POST = "akashic_last_comment_time";
 
 const REACTIONS = [
   { key: "like", emoji: "👍", label: "Like" },
   { key: "love", emoji: "❤️", label: "Love" },
   { key: "laugh", emoji: "😂", label: "Laugh" },
-  { key: "wow", emoji: "🔥", label: "Wow" }
+  { key: "wow", emoji: "🔥", label: "Wow" },
+  { key: "sad", emoji: "😢", label: "Sad" },
+  { key: "angry", emoji: "👎", label: "Angry" }
 ];
+
+const STORAGE_KEY_LAST_POST = "akashic_last_comment_time";
+const STORAGE_KEY_REACTION_STATE = "akashic_comment_reactions";
+const STORAGE_KEY_EDIT_TOKENS = "akashic_comment_edit_tokens";
+const STORAGE_KEY_ADMIN_KEY = "akashic_admin_key";
 
 const els = {
   count: document.getElementById("commentCount"),
@@ -20,20 +26,31 @@ const els = {
   list: document.getElementById("commentList"),
   prev: document.getElementById("commentPrev"),
   next: document.getElementById("commentNext"),
-  pageInfo: document.getElementById("commentPageInfo")
+  pageInfo: document.getElementById("commentPageInfo"),
+  adminBtn: document.getElementById("commentAdminBtn"),
+  adminPanel: document.getElementById("commentAdminPanel"),
+  adminInput: document.getElementById("adminKeyInput"),
+  adminSave: document.getElementById("adminKeySave"),
+  adminClear: document.getElementById("adminKeyClear"),
+  adminModeText: document.getElementById("adminModeText")
 };
 
 let comments = [];
 let currentPage = 1;
 let cooldownTimer = null;
-let expandedReplies = new Set();
+let editingId = null;
 let openReplyForms = new Set();
+let expandedReplies = new Set();
+let openReactionTargetId = null;
+let reactionState = loadJson(STORAGE_KEY_REACTION_STATE, {});
+let editTokens = loadJson(STORAGE_KEY_EDIT_TOKENS, {});
 
 init();
 
 function init() {
   if (!els.form || !els.list) return;
 
+  setupAdminUI();
   els.form.addEventListener("submit", handleSubmit);
 
   els.prev?.addEventListener("click", () => {
@@ -54,6 +71,68 @@ function init() {
   loadComments();
   syncCooldownUI();
   startCooldownTicker();
+
+  document.addEventListener("click", (event) => {
+    const shell = event.target.closest?.(".comment-reaction-trigger");
+    if (!shell && openReactionTargetId) {
+      openReactionTargetId = null;
+      renderComments();
+    }
+  });
+}
+
+function setupAdminUI() {
+  els.adminBtn?.addEventListener("click", () => {
+    if (els.adminPanel) {
+      els.adminPanel.classList.toggle("hidden");
+    }
+  });
+
+  els.adminSave?.addEventListener("click", () => {
+    const key = sanitizeText(els.adminInput?.value || "");
+    if (!key) {
+      setStatus("Enter the admin key first.");
+      return;
+    }
+
+    sessionStorage.setItem(STORAGE_KEY_ADMIN_KEY, key);
+    updateAdminModeText();
+    setStatus("Admin mode enabled.");
+    loadComments({ keepPage: true });
+  });
+
+  els.adminClear?.addEventListener("click", () => {
+    sessionStorage.removeItem(STORAGE_KEY_ADMIN_KEY);
+    if (els.adminInput) els.adminInput.value = "";
+    updateAdminModeText();
+    setStatus("Admin mode disabled.");
+    loadComments({ keepPage: true });
+  });
+
+  if (els.adminInput) {
+    const saved = sessionStorage.getItem(STORAGE_KEY_ADMIN_KEY);
+    if (saved) els.adminInput.value = saved;
+  }
+
+  updateAdminModeText();
+}
+
+function isAdminMode() {
+  return Boolean(sessionStorage.getItem(STORAGE_KEY_ADMIN_KEY));
+}
+
+function getAdminKey() {
+  return sessionStorage.getItem(STORAGE_KEY_ADMIN_KEY) || "";
+}
+
+function updateAdminModeText() {
+  if (!els.adminModeText) return;
+
+  if (isAdminMode()) {
+    els.adminModeText.textContent = "Admin mode is on. Hidden comments and moderation controls are visible.";
+  } else {
+    els.adminModeText.textContent = "Admin mode is off.";
+  }
 }
 
 async function loadComments({ keepPage = true } = {}) {
@@ -61,11 +140,17 @@ async function loadComments({ keepPage = true } = {}) {
   setLoading(true);
 
   try {
+    const headers = {
+      Accept: "application/json"
+    };
+
+    if (isAdminMode()) {
+      headers["x-admin-key"] = getAdminKey();
+    }
+
     const res = await fetch(COMMENTS_API_URL, {
       method: "GET",
-      headers: {
-        Accept: "application/json"
-      }
+      headers
     });
 
     if (!res.ok) {
@@ -81,6 +166,8 @@ async function loadComments({ keepPage = true } = {}) {
     }
 
     openReplyForms.clear();
+    editingId = null;
+    openReactionTargetId = null;
     renderComments();
     setStatus("");
   } catch (error) {
@@ -96,8 +183,8 @@ async function loadComments({ keepPage = true } = {}) {
 async function handleSubmit(event) {
   event.preventDefault();
 
-  const name = sanitizeText(els.name.value).slice(0, 32) || "Anonymous";
-  const message = sanitizeText(els.text.value).slice(0, 240);
+  const name = sanitizeText(els.name?.value || "").slice(0, 32) || "Anonymous";
+  const message = sanitizeText(els.text?.value || "").slice(0, 240);
 
   if (!message) {
     setStatus("Write a comment first.");
@@ -113,14 +200,18 @@ async function handleSubmit(event) {
   setStatus("Posting comment...");
 
   try {
-    await postJson({
+    const result = await postJson({
       action: "comment",
       username: name,
       message
     });
 
+    if (result?.comment?.id && result?.comment?.editToken) {
+      storeEditToken(result.comment.id, result.comment.editToken);
+    }
+
     markPosted();
-    els.text.value = "";
+    if (els.text) els.text.value = "";
     currentPage = 1;
     await loadComments({ keepPage: false });
     setStatus("Comment posted.");
@@ -133,9 +224,9 @@ async function handleSubmit(event) {
   }
 }
 
-async function handleReplySubmit(parentId, textarea, submitBtn, container) {
-  const name = sanitizeText(els.name.value).slice(0, 32) || "Anonymous";
-  const message = sanitizeText(textarea.value).slice(0, 240);
+async function handleReplySubmit(parentId, textarea, submitBtn) {
+  const name = sanitizeText(els.name?.value || "").slice(0, 32) || "Anonymous";
+  const message = sanitizeText(textarea.value || "").slice(0, 240);
 
   if (!message) {
     setStatus("Write a reply first.");
@@ -151,12 +242,16 @@ async function handleReplySubmit(parentId, textarea, submitBtn, container) {
   setStatus("Posting reply...");
 
   try {
-    await postJson({
+    const result = await postJson({
       action: "reply",
       parentId,
       username: name,
       message
     });
+
+    if (result?.comment?.id && result?.comment?.editToken) {
+      storeEditToken(result.comment.id, result.comment.editToken);
+    }
 
     markPosted();
     openReplyForms.delete(parentId);
@@ -170,36 +265,132 @@ async function handleReplySubmit(parentId, textarea, submitBtn, container) {
   }
 }
 
-async function handleReaction(targetId, reaction) {
-  if (getCooldownLeft() > 0) {
-    setStatus(`Please wait ${formatCooldown(getCooldownLeft())} before posting again.`);
+async function handleEditSubmit(targetId, textarea, saveBtn) {
+  const message = sanitizeText(textarea.value || "").slice(0, 240);
+
+  if (!message) {
+    setStatus("Write something before saving.");
     return;
   }
+
+  const editToken = getEditToken(targetId);
+  if (!editToken && !isAdminMode()) {
+    setStatus("You do not have permission to edit this comment.");
+    return;
+  }
+
+  saveBtn.disabled = true;
+  setStatus("Saving edit...");
+
+  try {
+    await postJson({
+      action: "edit",
+      targetId,
+      message,
+      editToken
+    }, { adminAllowed: true });
+
+    editingId = null;
+    await loadComments({ keepPage: true });
+    setStatus("Comment updated.");
+  } catch (error) {
+    console.error(error);
+    setStatus(`Could not edit comment: ${error.message}`);
+    saveBtn.disabled = false;
+  }
+}
+
+async function handleDelete(targetId) {
+  const editToken = getEditToken(targetId);
+  if (!editToken && !isAdminMode()) {
+    setStatus("You do not have permission to delete this comment.");
+    return;
+  }
+
+  if (!confirm("Delete this comment?")) return;
+
+  setStatus("Deleting...");
+  try {
+    await postJson({
+      action: "delete",
+      targetId,
+      editToken
+    }, { adminAllowed: true });
+
+    removeEditToken(targetId);
+    editingId = null;
+    openReplyForms.delete(targetId);
+    expandedReplies.delete(targetId);
+    await loadComments({ keepPage: true });
+    setStatus("Comment deleted.");
+  } catch (error) {
+    console.error(error);
+    setStatus(`Could not delete comment: ${error.message}`);
+  }
+}
+
+async function handleModerate(targetId, hidden) {
+  if (!isAdminMode()) {
+    setStatus("Admin mode is required for moderation.");
+    return;
+  }
+
+  setStatus(hidden ? "Hiding comment..." : "Showing comment...");
+  try {
+    await postJson({
+      action: "moderate",
+      targetId,
+      hidden
+    }, { adminAllowed: true });
+
+    await loadComments({ keepPage: true });
+    setStatus(hidden ? "Comment hidden." : "Comment shown.");
+  } catch (error) {
+    console.error(error);
+    setStatus(`Could not moderate comment: ${error.message}`);
+  }
+}
+
+async function handleReaction(targetId, chosenReaction) {
+  const current = getLocalReaction(targetId);
+  const next = current === chosenReaction ? null : chosenReaction;
 
   try {
     await postJson({
       action: "reaction",
       targetId,
-      reaction
+      reaction: next,
+      previousReaction: current
     });
 
-    markPosted();
+    if (next) {
+      setLocalReaction(targetId, next);
+    } else {
+      clearLocalReaction(targetId);
+    }
+
+    openReactionTargetId = null;
     await loadComments({ keepPage: true });
-    setStatus("Reaction added.");
-    syncCooldownUI();
+    setStatus("Reaction updated.");
   } catch (error) {
     console.error(error);
-    setStatus(`Could not add reaction: ${error.message}`);
+    setStatus(`Could not update reaction: ${error.message}`);
   }
 }
 
-async function postJson(payload) {
+async function postJson(payload, { adminAllowed = false } = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json"
+  };
+
+  if (adminAllowed && isAdminMode()) {
+    headers["x-admin-key"] = getAdminKey();
+  }
+
   const res = await fetch(COMMENTS_API_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json"
-    },
+    headers,
     body: JSON.stringify(payload)
   });
 
@@ -214,16 +405,18 @@ async function postJson(payload) {
 function renderComments() {
   if (!els.list) return;
 
-  const totalPages = getTotalPages();
+  const visibleRoots = getVisibleRoots();
+  const totalPages = getTotalPages(visibleRoots);
+
   if (currentPage > totalPages) {
     currentPage = totalPages || 1;
   }
 
   const start = (currentPage - 1) * COMMENTS_PER_PAGE;
-  const pageItems = comments.slice(start, start + COMMENTS_PER_PAGE);
+  const pageItems = visibleRoots.slice(start, start + COMMENTS_PER_PAGE);
 
-  els.count.textContent = String(countTree(comments));
-  els.pageInfo.textContent = comments.length
+  els.count.textContent = String(visibleRoots.length);
+  els.pageInfo.textContent = visibleRoots.length
     ? `Page ${currentPage} of ${totalPages}`
     : "No comments yet";
 
@@ -248,42 +441,149 @@ function renderComments() {
 }
 
 function renderNode(node, depth = 0) {
+  if (!isAdminMode() && node.hidden) {
+    return document.createDocumentFragment();
+  }
+
   const article = document.createElement("article");
   article.className = `comment-card ${depth > 0 ? "comment-card-reply" : ""}`;
 
   const meta = document.createElement("div");
   meta.className = "comment-meta";
 
-  const name = document.createElement("div");
-  name.className = "comment-name";
+  const left = document.createElement("div");
+  left.className = "comment-name";
+
+  const name = document.createElement("span");
   name.textContent = node.username || "Anonymous";
+  left.appendChild(name);
+
+  if (node.owner) {
+    const badge = document.createElement("span");
+    badge.className = "owner-badge";
+    badge.textContent = "OWNER";
+    left.appendChild(badge);
+  }
+
+  if (node.hidden) {
+    const hiddenBadge = document.createElement("span");
+    hiddenBadge.className = "moderation-badge";
+    hiddenBadge.textContent = "HIDDEN";
+    left.appendChild(hiddenBadge);
+  }
+
+  if (node.deleted) {
+    const deletedBadge = document.createElement("span");
+    deletedBadge.className = "moderation-badge";
+    deletedBadge.textContent = "DELETED";
+    left.appendChild(deletedBadge);
+  }
 
   const time = document.createElement("div");
   time.className = "comment-time";
-  time.textContent = timeAgo(node.date);
+  time.textContent = timeAgo(node.updatedAt || node.date);
 
-  meta.appendChild(name);
+  meta.appendChild(left);
   meta.appendChild(time);
 
   const message = document.createElement("div");
   message.className = "comment-message";
-  message.textContent = node.message || "";
+  message.textContent = node.deleted ? "[deleted]" : (node.message || "");
+
+  article.appendChild(meta);
+  article.appendChild(message);
+
+  if (node.editedAt && !node.deleted) {
+    const edited = document.createElement("div");
+    edited.className = "comment-time mt-1";
+    edited.textContent = "edited";
+    article.appendChild(edited);
+  }
+
+  const reactionSummary = document.createElement("div");
+  reactionSummary.className = "comment-reaction-summary";
+
+  for (const reaction of REACTIONS) {
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "comment-pill";
+    const count = Number(node.reactions?.[reaction.key]) || 0;
+    pill.textContent = `${reaction.emoji} ${count}`;
+    pill.title = reaction.label;
+    pill.addEventListener("click", () => handleReaction(node.id, reaction.key));
+    reactionSummary.appendChild(pill);
+  }
+
+  article.appendChild(reactionSummary);
 
   const actions = document.createElement("div");
   actions.className = "comment-actions";
 
-  const reactionWrap = document.createElement("div");
-  reactionWrap.className = "comment-reactions";
+  const reactionShell = document.createElement("div");
+  reactionShell.className = "comment-reaction-trigger";
+  if (openReactionTargetId === node.id) reactionShell.classList.add("is-open");
+
+  const reactionButton = document.createElement("button");
+  reactionButton.type = "button";
+  reactionButton.className = "comment-reply-button";
+  reactionButton.textContent = "React";
+
+  let longPressTimer = null;
+  let longPressUsed = false;
+
+  const openPicker = () => {
+    openReactionTargetId = node.id;
+    renderComments();
+  };
+
+  reactionButton.addEventListener("pointerdown", () => {
+    longPressUsed = false;
+    clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => {
+      longPressUsed = true;
+      openPicker();
+    }, 420);
+  });
+
+  reactionButton.addEventListener("pointerup", () => {
+    clearTimeout(longPressTimer);
+  });
+
+  reactionButton.addEventListener("pointerleave", () => {
+    clearTimeout(longPressTimer);
+  });
+
+  reactionButton.addEventListener("pointercancel", () => {
+    clearTimeout(longPressTimer);
+  });
+
+  reactionButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    clearTimeout(longPressTimer);
+    if (!longPressUsed) {
+      openPicker();
+    }
+  });
+
+  const picker = document.createElement("div");
+  picker.className = "reaction-picker";
 
   for (const reaction of REACTIONS) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "comment-reaction";
-    button.innerHTML = `<span aria-hidden="true">${reaction.emoji}</span> <span>${Number(node.reactions?.[reaction.key]) || 0}</span>`;
-    button.title = reaction.label;
-    button.addEventListener("click", () => handleReaction(node.id, reaction.key));
-    reactionWrap.appendChild(button);
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "reaction-option";
+    if (getLocalReaction(node.id) === reaction.key) {
+      option.classList.add("active");
+    }
+    option.textContent = reaction.emoji;
+    option.title = reaction.label;
+    option.addEventListener("click", () => handleReaction(node.id, reaction.key));
+    picker.appendChild(option);
   }
+
+  reactionShell.appendChild(reactionButton);
+  reactionShell.appendChild(picker);
+  actions.appendChild(reactionShell);
 
   const replyButton = document.createElement("button");
   replyButton.type = "button";
@@ -297,13 +597,41 @@ function renderNode(node, depth = 0) {
     }
     renderComments();
   });
-
-  actions.appendChild(reactionWrap);
   actions.appendChild(replyButton);
 
-  article.appendChild(meta);
-  article.appendChild(message);
+  if (canManageNode(node)) {
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "comment-edit-button";
+    editButton.textContent = "Edit";
+    editButton.addEventListener("click", () => {
+      editingId = editingId === node.id ? null : node.id;
+      renderComments();
+    });
+    actions.appendChild(editButton);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "comment-delete-button";
+    deleteButton.textContent = "Delete";
+    deleteButton.addEventListener("click", () => handleDelete(node.id));
+    actions.appendChild(deleteButton);
+  }
+
+  if (isAdminMode()) {
+    const modButton = document.createElement("button");
+    modButton.type = "button";
+    modButton.className = node.hidden ? "comment-show-button" : "comment-hide-button";
+    modButton.textContent = node.hidden ? "Show" : "Hide";
+    modButton.addEventListener("click", () => handleModerate(node.id, !node.hidden));
+    actions.appendChild(modButton);
+  }
+
   article.appendChild(actions);
+
+  if (editingId === node.id) {
+    article.appendChild(renderEditForm(node));
+  }
 
   if (openReplyForms.has(node.id)) {
     article.appendChild(renderReplyForm(node));
@@ -333,7 +661,8 @@ function renderNode(node, depth = 0) {
     replyBox.className = "comment-replies";
 
     for (const reply of replies) {
-      replyBox.appendChild(renderNode(reply, depth + 1));
+      const child = renderNode(reply, depth + 1);
+      if (child) replyBox.appendChild(child);
     }
 
     article.appendChild(replyBox);
@@ -348,18 +677,18 @@ function renderReplyForm(parent) {
 
   const label = document.createElement("div");
   label.className = "comment-reply-label";
-  label.textContent = `Replying as ${sanitizeText(els.name?.value).slice(0, 32) || "Anonymous"}`;
+  label.textContent = `Replying as ${sanitizeText(els.name?.value || "").slice(0, 32) || "Anonymous"}`;
 
   const textarea = document.createElement("textarea");
   textarea.className = "input input-dark comment-textarea";
-  textarea.placeholder = "Write a reply";
+  textarea.placeholder = "Write a reply...";
   textarea.maxLength = 240;
 
   const actions = document.createElement("div");
   actions.className = "comment-reply-actions";
 
   const submit = document.createElement("button");
-  submit.type = "submit";
+  submit.type = "button";
   submit.className = "comment-reply-submit";
   submit.textContent = "Post reply";
 
@@ -372,6 +701,10 @@ function renderReplyForm(parent) {
     renderComments();
   });
 
+  submit.addEventListener("click", async () => {
+    await handleReplySubmit(parent.id, textarea, submit);
+  });
+
   actions.appendChild(submit);
   actions.appendChild(cancel);
 
@@ -379,47 +712,63 @@ function renderReplyForm(parent) {
   wrap.appendChild(textarea);
   wrap.appendChild(actions);
 
-  wrap.addEventListener("submit", (event) => event.preventDefault());
-  submit.addEventListener("click", async () => {
-    await handleReplySubmit(parent.id, textarea, submit, wrap);
+  return wrap;
+}
+
+function renderEditForm(node) {
+  const wrap = document.createElement("div");
+  wrap.className = "comment-edit-form";
+
+  const label = document.createElement("div");
+  label.className = "comment-edit-label";
+  label.textContent = "Edit comment";
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "input input-dark comment-textarea";
+  textarea.maxLength = 240;
+  textarea.value = node.deleted ? "" : (node.message || "");
+
+  const actions = document.createElement("div");
+  actions.className = "comment-edit-actions";
+
+  const save = document.createElement("button");
+  save.type = "button";
+  save.className = "comment-edit-save";
+  save.textContent = "Save";
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "comment-edit-cancel";
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", () => {
+    editingId = null;
+    renderComments();
   });
+
+  save.addEventListener("click", async () => {
+    await handleEditSubmit(node.id, textarea, save);
+  });
+
+  actions.appendChild(save);
+  actions.appendChild(cancel);
+
+  wrap.appendChild(label);
+  wrap.appendChild(textarea);
+  wrap.appendChild(actions);
 
   return wrap;
 }
 
-function normalizeTree(list) {
-  return list.map(normalizeNode);
+function canManageNode(node) {
+  return isAdminMode() || Boolean(getEditToken(node.id));
 }
 
-function normalizeNode(node) {
-  const replies = Array.isArray(node?.replies) ? node.replies.map(normalizeNode) : [];
-  const reactions = normalizeReactions(node?.reactions);
-
-  return {
-    id: sanitizeText(node?.id) || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    username: sanitizeText(node?.username).slice(0, 32) || "Anonymous",
-    message: sanitizeText(node?.message).slice(0, 240),
-    date: sanitizeText(node?.date) || new Date().toISOString(),
-    reactions,
-    replies
-  };
+function getVisibleRoots() {
+  return comments.filter((node) => isAdminMode() || !node.hidden);
 }
 
-function normalizeReactions(input = {}) {
-  return {
-    like: Math.max(0, Number(input?.like) || 0),
-    love: Math.max(0, Number(input?.love) || 0),
-    laugh: Math.max(0, Number(input?.laugh) || 0),
-    wow: Math.max(0, Number(input?.wow) || 0)
-  };
-}
-
-function countTree(nodes) {
-  return nodes.reduce((sum, node) => sum + 1 + countTree(node.replies || []), 0);
-}
-
-function getTotalPages() {
-  return Math.max(1, Math.ceil(comments.length / COMMENTS_PER_PAGE));
+function getTotalPages(list = getVisibleRoots()) {
+  return Math.max(1, Math.ceil(list.length / COMMENTS_PER_PAGE));
 }
 
 function setLoading(isLoading) {
@@ -453,8 +802,8 @@ function syncCooldownUI() {
   if (left > 0) {
     setStatus(`Cooldown active. You can post again in ${formatCooldown(left)}.`);
     if (els.submit) els.submit.disabled = true;
-  } else {
-    if (els.submit) els.submit.disabled = false;
+  } else if (els.submit) {
+    els.submit.disabled = false;
   }
 }
 
@@ -518,7 +867,87 @@ function formatCooldown(ms) {
 }
 
 function sanitizeText(value) {
-  return String(value ?? "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function normalizeTree(list) {
+  return list.map(normalizeNode).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+}
+
+function normalizeNode(node) {
+  const replies = Array.isArray(node?.replies) ? node.replies.map(normalizeNode) : [];
+
+  return {
+    id: sanitizeText(node?.id) || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    username: sanitizeText(node?.username).slice(0, 32) || "Anonymous",
+    message: sanitizeText(node?.message).slice(0, 240),
+    date: sanitizeText(node?.date) || new Date().toISOString(),
+    updatedAt: sanitizeText(node?.updatedAt) || "",
+    editedAt: sanitizeText(node?.editedAt) || "",
+    owner: Boolean(node?.owner),
+    hidden: Boolean(node?.hidden),
+    deleted: Boolean(node?.deleted),
+    reactions: normalizeReactions(node?.reactions),
+    replies
+  };
+}
+
+function normalizeReactions(input = {}) {
+  return {
+    like: Math.max(0, Number(input?.like) || 0),
+    love: Math.max(0, Number(input?.love) || 0),
+    laugh: Math.max(0, Number(input?.laugh) || 0),
+    wow: Math.max(0, Number(input?.wow) || 0),
+    sad: Math.max(0, Number(input?.sad) || 0),
+    angry: Math.max(0, Number(input?.angry) || 0)
+  };
+}
+
+function loadJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getLocalReaction(targetId) {
+  return reactionState[targetId] || null;
+}
+
+function setLocalReaction(targetId, reaction) {
+  reactionState[targetId] = reaction;
+  saveJson(STORAGE_KEY_REACTION_STATE, reactionState);
+}
+
+function clearLocalReaction(targetId) {
+  delete reactionState[targetId];
+  saveJson(STORAGE_KEY_REACTION_STATE, reactionState);
+}
+
+function getEditToken(id) {
+  return editTokens[id] || "";
+}
+
+function storeEditToken(id, token) {
+  if (!id || !token) return;
+  editTokens[id] = token;
+  saveJson(STORAGE_KEY_EDIT_TOKENS, editTokens);
+}
+
+function removeEditToken(id) {
+  if (!id) return;
+  delete editTokens[id];
+  saveJson(STORAGE_KEY_EDIT_TOKENS, editTokens);
+}
+
+function countVisibleTopLevel() {
+  return getVisibleRoots().length;
 }

@@ -260,7 +260,7 @@ body.modal-open {
   border: 1px solid #242a36;
   background: #0b0f16;
   border-radius: 1rem;
-  padding: 0.9rem 1rem !important;
+  padding: 0.9rem 1rem 2.7rem !important;
   padding-right: 132px !important;
 }
 
@@ -268,6 +268,7 @@ body.modal-open {
   margin-top: 0.75rem;
   margin-left: 1rem;
   border-left: 2px solid #2b2f39;
+  padding-left: 1rem;
 }
 
 .comment-meta {
@@ -311,8 +312,8 @@ body.modal-open {
 
 .comment-actions-floating {
   position: absolute !important;
-  top: 0.75rem !important;
   right: 0.75rem !important;
+  bottom: 0.75rem !important;
   display: flex !important;
   gap: 0.35rem !important;
   align-items: center !important;
@@ -329,7 +330,9 @@ body.modal-open {
 .comment-hide-button,
 .comment-show-button,
 .comment-reply-submit,
-.comment-reply-cancel {
+.comment-reply-cancel,
+.comment-edit-save,
+.comment-edit-cancel {
   border: 1px solid #242a36;
   background: #0f131b;
   color: #d4d4d8;
@@ -337,7 +340,9 @@ body.modal-open {
   padding: 0.36rem 0.72rem;
   font-size: 0.78rem;
   line-height: 1.1;
+  min-height: 22px;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 0 0 1px #242a36;
 }
 
 .comment-reaction-trigger:hover,
@@ -348,7 +353,9 @@ body.modal-open {
 .comment-hide-button:hover,
 .comment-show-button:hover,
 .comment-reply-submit:hover,
-.comment-reply-cancel:hover {
+.comment-reply-cancel:hover,
+.comment-edit-save:hover,
+.comment-edit-cancel:hover {
   background: #171c26;
   border-color: #394150;
 }
@@ -453,10 +460,28 @@ body.modal-open {
 }
 
 .comment-replies {
-  margin-top: 0.8rem;
-  padding-left: 1rem;
+  position: relative;
+  margin-top: 12px;
+  margin-left: 22px;
+  padding-left: 18px;
   display: grid;
   gap: 0.75rem;
+}
+
+.comment-replies::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #2b2f39;
+  border-radius: 999px;
+}
+
+.comment-card-reply {
+  margin-left: 0;
+  border-left: none;
 }
 
 .comment-reply-form,
@@ -481,14 +506,14 @@ body.modal-open {
 
 .comment-reply-submit,
 .comment-edit-save {
-  background: #2a2a2a;
+  background: #1f2937;
   border-color: #444444;
   color: #fff;
 }
 
 .comment-reply-cancel,
 .comment-edit-cancel {
-  background: #151515;
+  background: #111827;
 }
 
 .owner-badge {
@@ -556,11 +581,13 @@ body.modal-open {
 @media (max-width: 640px) {
   .comment-card {
     padding-right: 108px !important;
+    padding-bottom: 2.5rem !important;
   }
 
   .comment-actions-floating {
-    top: 0.6rem !important;
+    top: auto !important;
     right: 0.6rem !important;
+    bottom: 0.6rem !important;
     gap: 0.28rem !important;
   }
 
@@ -568,7 +595,11 @@ body.modal-open {
   .comment-reply-button,
   .comment-toggle,
   .comment-edit-button,
-  .comment-delete-button {
+  .comment-delete-button,
+  .comment-reply-submit,
+  .comment-reply-cancel,
+  .comment-edit-save,
+  .comment-edit-cancel {
     padding: 0.3rem 0.6rem;
     font-size: 0.72rem;
   }
@@ -587,6 +618,11 @@ body.modal-open {
   .comment-reaction-badge {
     padding: 0.3rem 0.52rem;
     font-size: 0.73rem;
+  }
+
+  .comment-replies {
+    margin-left: 16px;
+    padding-left: 14px;
   }
 }
 

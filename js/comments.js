@@ -399,8 +399,7 @@ function renderNode(node, depth = 0) {
     article.appendChild(edited);
   }
 
-  const reactionSummary = renderReactionSummary(node);
-  article.appendChild(reactionSummary);
+  article.appendChild(renderReactionSummary(node));
 
   const actions = document.createElement("div");
   actions.className = "comment-actions";
@@ -872,4 +871,4 @@ function removeEditToken(id) {
   if (!id) return;
   delete editTokens[id];
   saveJson(STORAGE_KEY_EDIT_TOKENS, editTokens);
-                      }
+}

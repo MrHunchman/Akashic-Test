@@ -207,8 +207,9 @@ async function handleReplySubmit(parentId, nameInput, textarea, submitBtn) {
 
     markPosted();
     saveStoredName(name);
-
     openReplyForms.delete(parentId);
+    expandedReplies.add(parentId);
+
     await loadComments({ keepPage: true });
     setStatus("Reply posted.");
     syncCooldownUI();
@@ -377,9 +378,6 @@ function renderNode(node, depth = 0) {
 
   const article = document.createElement("article");
   article.className = `comment-card ${depth > 0 ? "comment-card-reply" : ""}`;
-  article.style.position = "relative";
-  article.style.paddingRight = "132px";
-  article.style.paddingBottom = "2.7rem";
 
   const meta = document.createElement("div");
   meta.className = "comment-meta";
@@ -409,146 +407,6 @@ function renderNode(node, depth = 0) {
   message.className = "comment-message";
   message.textContent = node.message || "";
 
-  const actions = document.createElement("div");
-  actions.className = "comment-actions comment-actions-floating";
-  actions.style.position = "absolute";
-  actions.style.right = "0.75rem";
-  actions.style.bottom = "0.75rem";
-  actions.style.display = "flex";
-  actions.style.gap = "0.35rem";
-  actions.style.alignItems = "center";
-  actions.style.justifyContent = "flex-end";
-  actions.style.flexWrap = "nowrap";
-  actions.style.zIndex = "2";
-
-  const reactionShell = document.createElement("div");
-  reactionShell.className = "comment-reaction-trigger";
-  reactionShell.style.position = "relative";
-  if (openReactionTargetId === node.id) reactionShell.classList.add("is-open");
-
-  const reactionButton = buildTinyButton("React");
-  reactionButton.classList.add("comment-reply-button");
-  reactionButton.style.position = "relative";
-
-  let longPressTimer = null;
-  let longPressUsed = false;
-
-  const openPicker = () => {
-    openReactionTargetId = node.id;
-    renderComments();
-  };
-
-  reactionButton.addEventListener("pointerdown", () => {
-    longPressUsed = false;
-    clearTimeout(longPressTimer);
-    longPressTimer = setTimeout(() => {
-      longPressUsed = true;
-      openPicker();
-    }, 420);
-  });
-
-  reactionButton.addEventListener("pointerup", () => {
-    clearTimeout(longPressTimer);
-  });
-
-  reactionButton.addEventListener("pointerleave", () => {
-    clearTimeout(longPressTimer);
-  });
-
-  reactionButton.addEventListener("pointercancel", () => {
-    clearTimeout(longPressTimer);
-  });
-
-  reactionButton.addEventListener("click", (event) => {
-    event.preventDefault();
-    clearTimeout(longPressTimer);
-    if (!longPressUsed) {
-      openPicker();
-    }
-  });
-
-  const picker = document.createElement("div");
-  picker.className = "reaction-picker";
-  picker.style.position = "absolute";
-  picker.style.left = "0";
-  picker.style.bottom = "calc(100% + 10px)";
-  picker.style.display = "flex";
-  picker.style.alignItems = "center";
-  picker.style.gap = "2px";
-  picker.style.padding = "6px";
-  picker.style.borderRadius = "999px";
-  picker.style.border = "1px solid #242a36";
-  picker.style.background = "#0b0f16";
-  picker.style.boxShadow = "0 14px 32px rgba(0, 0, 0, 0.38)";
-  picker.style.opacity = "0";
-  picker.style.pointerEvents = "none";
-  picker.style.transform = "translateY(8px)";
-  picker.style.transition = "opacity 0.16s ease, transform 0.16s ease";
-  picker.style.zIndex = "10";
-  picker.style.whiteSpace = "nowrap";
-
-  if (openReactionTargetId === node.id) {
-    picker.style.opacity = "1";
-    picker.style.pointerEvents = "auto";
-    picker.style.transform = "translateY(0)";
-  }
-
-  for (const reaction of REACTIONS) {
-    const option = document.createElement("button");
-    option.type = "button";
-    option.className = "reaction-option";
-    option.style.border = "none";
-    option.style.background = "transparent";
-    option.style.padding = "4px 6px";
-    option.style.fontSize = "1.08rem";
-    option.style.lineHeight = "1";
-    option.style.cursor = "pointer";
-    option.style.borderRadius = "999px";
-
-    if (getLocalReaction(node.id) === reaction.key) {
-      option.classList.add("active");
-      option.style.outline = "2px solid rgba(139, 92, 246, 0.45)";
-      option.style.outlineOffset = "1px";
-    }
-
-    option.textContent = reaction.emoji;
-    option.title = reaction.label;
-    option.addEventListener("click", () => handleReaction(node.id, reaction.key));
-    picker.appendChild(option);
-  }
-
-  reactionShell.appendChild(reactionButton);
-  reactionShell.appendChild(picker);
-
-  const replyButton = buildTinyButton(openReplyForms.has(node.id) ? "Cancel" : "Reply");
-  replyButton.classList.add("comment-reply-button");
-  replyButton.addEventListener("click", () => {
-    if (openReplyForms.has(node.id)) {
-      openReplyForms.delete(node.id);
-    } else {
-      openReplyForms.add(node.id);
-    }
-    renderComments();
-  });
-
-  actions.appendChild(reactionShell);
-  actions.appendChild(replyButton);
-
-  if (canManageNode(node)) {
-    const editButton = buildTinyButton("Edit");
-    editButton.classList.add("comment-edit-button");
-    editButton.addEventListener("click", () => {
-      editingId = editingId === node.id ? null : node.id;
-      renderComments();
-    });
-    actions.appendChild(editButton);
-
-    const deleteButton = buildTinyButton("Delete");
-    deleteButton.classList.add("comment-delete-button");
-    deleteButton.addEventListener("click", () => handleDelete(node.id));
-    actions.appendChild(deleteButton);
-  }
-
   article.appendChild(meta);
   article.appendChild(message);
 
@@ -557,54 +415,178 @@ function renderNode(node, depth = 0) {
     article.appendChild(reactionSummary);
   }
 
-  article.appendChild(actions);
+  if (depth === 0) {
+    const footer = document.createElement("div");
+    footer.className = "comment-footer";
+
+    const footerLeft = document.createElement("div");
+    footerLeft.className = "comment-footer-left";
+
+    const replies = Array.isArray(node.replies) ? node.replies : [];
+    if (replies.length) {
+      const toggle = buildChipButton(
+        expandedReplies.has(node.id)
+          ? `Hide replies (${replies.length})`
+          : `Show replies (${replies.length})`,
+        "comment-toggle"
+      );
+
+      toggle.addEventListener("click", () => {
+        if (expandedReplies.has(node.id)) {
+          expandedReplies.delete(node.id);
+        } else {
+          expandedReplies.add(node.id);
+        }
+        renderComments();
+      });
+
+      footerLeft.appendChild(toggle);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "comment-footer-actions";
+
+    const reactionShell = document.createElement("div");
+    reactionShell.className = "comment-reaction-trigger";
+    if (openReactionTargetId === node.id) reactionShell.classList.add("is-open");
+
+    const reactionButton = buildChipButton("React", "comment-reply-button");
+
+    let longPressTimer = null;
+    let longPressUsed = false;
+
+    const openPicker = () => {
+      openReactionTargetId = node.id;
+      renderComments();
+    };
+
+    reactionButton.addEventListener("pointerdown", () => {
+      longPressUsed = false;
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        longPressUsed = true;
+        openPicker();
+      }, 420);
+    });
+
+    reactionButton.addEventListener("pointerup", () => {
+      clearTimeout(longPressTimer);
+    });
+
+    reactionButton.addEventListener("pointerleave", () => {
+      clearTimeout(longPressTimer);
+    });
+
+    reactionButton.addEventListener("pointercancel", () => {
+      clearTimeout(longPressTimer);
+    });
+
+    reactionButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      clearTimeout(longPressTimer);
+      if (!longPressUsed) {
+        openPicker();
+      }
+    });
+
+    const picker = document.createElement("div");
+    picker.className = "reaction-picker";
+
+    if (openReactionTargetId === node.id) {
+      picker.classList.add("is-open");
+    }
+
+    for (const reaction of REACTIONS) {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "reaction-option";
+      option.textContent = reaction.emoji;
+      option.title = reaction.label;
+
+      if (getLocalReaction(node.id) === reaction.key) {
+        option.classList.add("active");
+      }
+
+      option.addEventListener("click", () => handleReaction(node.id, reaction.key));
+      picker.appendChild(option);
+    }
+
+    reactionShell.appendChild(reactionButton);
+    reactionShell.appendChild(picker);
+    actions.appendChild(reactionShell);
+
+    const replyButton = buildChipButton(
+      openReplyForms.has(node.id) ? "Cancel" : "Reply",
+      "comment-reply-button"
+    );
+
+    replyButton.addEventListener("click", () => {
+      if (openReplyForms.has(node.id)) {
+        openReplyForms.delete(node.id);
+      } else {
+        openReplyForms.add(node.id);
+      }
+      renderComments();
+    });
+
+    actions.appendChild(replyButton);
+
+    if (canManageNode(node)) {
+      const editButton = buildChipButton("Edit", "comment-edit-button");
+      editButton.addEventListener("click", () => {
+        editingId = editingId === node.id ? null : node.id;
+        renderComments();
+      });
+      actions.appendChild(editButton);
+
+      const deleteButton = buildChipButton("Delete", "comment-delete-button");
+      deleteButton.addEventListener("click", () => handleDelete(node.id));
+      actions.appendChild(deleteButton);
+    }
+
+    footer.appendChild(footerLeft);
+    footer.appendChild(actions);
+    article.appendChild(footer);
+
+    if (editingId === node.id) {
+      article.appendChild(renderEditForm(node));
+    }
+
+    if (openReplyForms.has(node.id)) {
+      article.appendChild(renderReplyForm(node));
+    }
+
+    if (expandedReplies.has(node.id) && replies.length) {
+      const replyBox = document.createElement("div");
+      replyBox.className = "comment-replies";
+
+      for (const reply of replies) {
+        const child = renderNode(reply, depth + 1);
+        if (child) replyBox.appendChild(child);
+      }
+
+      article.appendChild(replyBox);
+    }
+  } else {
+    const replies = Array.isArray(node.replies) ? node.replies : [];
+    if (expandedReplies.has(node.id) && replies.length) {
+      const replyBox = document.createElement("div");
+      replyBox.className = "comment-replies";
+
+      for (const reply of replies) {
+        const child = renderNode(reply, depth + 1);
+        if (child) replyBox.appendChild(child);
+      }
+
+      article.appendChild(replyBox);
+    }
+  }
 
   if (node.editedAt) {
     const edited = document.createElement("div");
     edited.className = "comment-time mt-1";
     edited.textContent = "edited";
     article.appendChild(edited);
-  }
-
-  if (editingId === node.id) {
-    article.appendChild(renderEditForm(node));
-  }
-
-  if (openReplyForms.has(node.id)) {
-    article.appendChild(renderReplyForm(node));
-  }
-
-  const replies = Array.isArray(node.replies) ? node.replies : [];
-  if (replies.length) {
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "comment-toggle";
-    toggle.textContent = expandedReplies.has(node.id)
-      ? `Hide replies (${replies.length})`
-      : `Show replies (${replies.length})`;
-
-    toggle.addEventListener("click", () => {
-      if (expandedReplies.has(node.id)) {
-        expandedReplies.delete(node.id);
-      } else {
-        expandedReplies.add(node.id);
-      }
-      renderComments();
-    });
-
-    article.appendChild(toggle);
-  }
-
-  if (expandedReplies.has(node.id) && replies.length) {
-    const replyBox = document.createElement("div");
-    replyBox.className = "comment-replies";
-
-    for (const reply of replies) {
-      const child = renderNode(reply, depth + 1);
-      if (child) replyBox.appendChild(child);
-    }
-
-    article.appendChild(replyBox);
   }
 
   return article;
@@ -624,43 +606,17 @@ function renderReactionSummary(node) {
 
   const bubble = document.createElement("button");
   bubble.type = "button";
-  bubble.className = "comment-reaction-summary comment-reaction-bubble";
-  bubble.style.display = "inline-flex";
-  bubble.style.alignItems = "center";
-  bubble.style.gap = "4px";
-  bubble.style.padding = "0.33rem 0.72rem";
-  bubble.style.borderRadius = "999px";
-  bubble.style.border = "1px solid #242a36";
-  bubble.style.background = "#0f131b";
-  bubble.style.color = "#d4d4d8";
-  bubble.style.fontSize = "0.78rem";
-  bubble.style.lineHeight = "1";
-  bubble.style.whiteSpace = "nowrap";
-  bubble.style.boxShadow = "0 0 0 1px #242a36";
-  bubble.style.cursor = "pointer";
-  bubble.style.marginTop = "0.6rem";
-
-  activeReactions.forEach((reaction, index) => {
-    if (index > 0) {
-      const spacer = document.createElement("span");
-      spacer.textContent = " ";
-      spacer.style.width = "2px";
-      bubble.appendChild(spacer);
-    }
-
-    const item = document.createElement("span");
-    item.style.display = "inline-flex";
-    item.style.alignItems = "center";
-    item.style.gap = "3px";
-    item.style.whiteSpace = "nowrap";
-    item.textContent = `${reaction.emoji} ${reaction.count}`;
-
-    bubble.appendChild(item);
-  });
-
+  bubble.className = "comment-reaction-bubble";
   bubble.addEventListener("click", () => {
     openReactionTargetId = node.id;
     renderComments();
+  });
+
+  activeReactions.forEach((reaction) => {
+    const item = document.createElement("span");
+    item.className = "comment-reaction-item";
+    item.textContent = `${reaction.emoji} ${reaction.count}`;
+    bubble.appendChild(item);
   });
 
   return bubble;
@@ -689,11 +645,9 @@ function renderReplyForm(parent) {
   const actions = document.createElement("div");
   actions.className = "comment-reply-actions";
 
-  const submit = buildTinyButton("Post reply");
-  submit.classList.add("comment-reply-submit");
+  const submit = buildChipButton("Post reply", "comment-reply-submit");
+  const cancel = buildChipButton("Cancel", "comment-reply-cancel");
 
-  const cancel = buildTinyButton("Cancel");
-  cancel.classList.add("comment-reply-cancel");
   cancel.addEventListener("click", () => {
     openReplyForms.delete(parent.id);
     renderComments();
@@ -730,11 +684,9 @@ function renderEditForm(node) {
   const actions = document.createElement("div");
   actions.className = "comment-edit-actions";
 
-  const save = buildTinyButton("Save");
-  save.classList.add("comment-edit-save");
+  const save = buildChipButton("Save", "comment-edit-save");
+  const cancel = buildChipButton("Cancel", "comment-edit-cancel");
 
-  const cancel = buildTinyButton("Cancel");
-  cancel.classList.add("comment-edit-cancel");
   cancel.addEventListener("click", () => {
     editingId = null;
     renderComments();
@@ -969,19 +921,10 @@ function removeEditToken(id) {
   saveJson(STORAGE_KEY_EDIT_TOKENS, editTokens);
 }
 
-function buildTinyButton(text) {
+function buildChipButton(text, extraClass = "") {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = text;
-  button.style.border = "1px solid #242a36";
-  button.style.background = "#0f131b";
-  button.style.color = "#d4d4d8";
-  button.style.borderRadius = "999px";
-  button.style.padding = "0.36rem 0.72rem";
-  button.style.fontSize = "0.78rem";
-  button.style.lineHeight = "1.1";
-  button.style.minHeight = "22px";
-  button.style.transition = "background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease";
-  button.style.boxShadow = "0 0 0 1px #242a36";
+  button.className = `comment-chip ${extraClass}`.trim();
   return button;
-      }
+}

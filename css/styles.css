@@ -256,10 +256,12 @@ body.modal-open {
 }
 
 .comment-card {
+  position: relative;
   border: 1px solid #242a36;
   background: #0b0f16;
   border-radius: 1rem;
-  padding: 0.9rem 1rem;
+  padding: 0.9rem 1rem !important;
+  padding-right: 132px !important;
 }
 
 .comment-card-reply {
@@ -283,6 +285,7 @@ body.modal-open {
   gap: 0.5rem;
   font-weight: 700;
   color: #fff;
+  min-width: 0;
 }
 
 .comment-time {
@@ -299,11 +302,23 @@ body.modal-open {
 
 .comment-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 0.65rem;
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+.comment-actions-floating {
+  position: absolute !important;
+  top: 0.75rem !important;
+  right: 0.75rem !important;
+  display: flex !important;
+  gap: 0.35rem !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+  z-index: 2 !important;
 }
 
 .comment-reaction-trigger,
@@ -318,11 +333,11 @@ body.modal-open {
   border: 1px solid #242a36;
   background: #0f131b;
   color: #d4d4d8;
-  border-radius: 0.7rem;
-  padding: 0.38rem 0.62rem;
+  border-radius: 999px;
+  padding: 0.36rem 0.72rem;
   font-size: 0.78rem;
   line-height: 1.1;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
 }
 
 .comment-reaction-trigger:hover,
@@ -339,16 +354,17 @@ body.modal-open {
 }
 
 .comment-reaction-trigger {
-  position: relative;
+  position: relative !important;
 }
 
 .reaction-picker {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 10px);
+  position: absolute !important;
+  left: 0 !important;
+  bottom: calc(100% + 10px) !important;
   display: flex;
-  gap: 0.45rem;
-  padding: 0.45rem;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
   border-radius: 999px;
   border: 1px solid #242a36;
   background: #0b0f16;
@@ -358,6 +374,7 @@ body.modal-open {
   transform: translateY(8px);
   transition: opacity 0.16s ease, transform 0.16s ease;
   z-index: 10;
+  white-space: nowrap;
 }
 
 .comment-reaction-trigger.is-open .reaction-picker {
@@ -367,31 +384,40 @@ body.modal-open {
 }
 
 .reaction-option {
-  border: 1px solid #242a36;
-  background: #0f131b;
+  border: none;
+  background: transparent;
   color: #fff;
   border-radius: 999px;
-  padding: 0.35rem 0.55rem;
-  font-size: 0.95rem;
+  padding: 4px 6px;
+  font-size: 1.08rem;
   line-height: 1;
+  cursor: pointer;
 }
 
 .reaction-option:hover {
-  background: #171c26;
-  border-color: #394150;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .reaction-option.active {
   outline: 2px solid rgba(139, 92, 246, 0.45);
+  outline-offset: 1px;
+  border-radius: 999px;
 }
 
 .comment-reaction-summary {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
   margin-top: 0.6rem;
-  opacity: 0.88;
+  opacity: 0.92;
   transition: opacity 0.25s ease, filter 0.25s ease, transform 0.25s ease;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.comment-reaction-summary::-webkit-scrollbar {
+  display: none;
 }
 
 .comment-reaction-summary-active {
@@ -399,18 +425,25 @@ body.modal-open {
   filter: none;
 }
 
-.comment-pill {
+.comment-pill,
+.comment-reaction-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid #242a36;
   background: #0f131b;
   color: #d4d4d8;
   border-radius: 999px;
-  padding: 0.35rem 0.55rem;
+  padding: 0.33rem 0.58rem;
   font-size: 0.78rem;
   line-height: 1;
   transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 0 0 1px #242a36;
+  white-space: nowrap;
 }
 
-.comment-pill:hover {
+.comment-pill:hover,
+.comment-reaction-badge:hover {
   background: #171c26;
   border-color: #394150;
 }
@@ -517,6 +550,43 @@ body.modal-open {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .comment-card {
+    padding-right: 108px !important;
+  }
+
+  .comment-actions-floating {
+    top: 0.6rem !important;
+    right: 0.6rem !important;
+    gap: 0.28rem !important;
+  }
+
+  .comment-reaction-trigger,
+  .comment-reply-button,
+  .comment-toggle,
+  .comment-edit-button,
+  .comment-delete-button {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
+  }
+
+  .reaction-picker {
+    gap: 1px;
+    padding: 5px;
+  }
+
+  .reaction-option {
+    padding: 3px 5px;
+    font-size: 1rem;
+  }
+
+  .comment-pill,
+  .comment-reaction-badge {
+    padding: 0.3rem 0.52rem;
+    font-size: 0.73rem;
   }
 }
 
